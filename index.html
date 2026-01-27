@@ -20,6 +20,12 @@
 
   <div class="card">
     <h3>Gráfica de gastos</h3>
+    <div class="chart-controls">
+      <select id="chartMonthSelect" onchange="renderChart()">
+        <option value="">Todos los meses</option>
+      </select>
+      <button onclick="toggleChartType()" class="secondary">Cambiar tipo</button>
+    </div>
     <canvas id="expensesChart"></canvas>
   </div>
 
@@ -37,7 +43,7 @@
   </div>
 
   <div class="card">
-    <h3>Nuevo movimiento</h3>
+    <h3 id="movementsTitle">Nuevo movimiento</h3>
     <input type="date" id="movDate" />
     <select id="movType">
       <option value="ingreso">Ingreso</option>
@@ -47,6 +53,8 @@
     <textarea id="movDesc" placeholder="Descripción (opcional)"></textarea>
     <input type="number" id="movAmount" placeholder="Monto" />
     <button class="primary" onclick="addMovement()">Guardar</button>
+    
+    <div id="dayMovements" class="day-movements"></div>
   </div>
 </div>
 
@@ -77,6 +85,15 @@
   <div class="card">
     <h3>Deudas activas</h3>
     <div id="debtList"></div>
+  </div>
+</div>
+
+<!-- Modal para editar/eliminar movimientos -->
+<div id="movementModal" class="modal">
+  <div class="modal-content">
+    <h3>Editar/Eliminar Movimiento</h3>
+    <div id="modalMovementsList"></div>
+    <button onclick="closeModal()" class="secondary">Cerrar</button>
   </div>
 </div>
 
