@@ -39,7 +39,7 @@ function addMovement() {
   
   const movement = {
     id: Date.now(),
-    date: movDate.value,
+    date: movDate.value, // Guardamos la fecha como string YYYY-MM-DD
     type: movType.value,
     title: movTitle.value,
     desc: movDesc.value,
@@ -62,9 +62,10 @@ function renderCalendar() {
   const y = currentDate.getFullYear();
   const m = currentDate.getMonth();
 
-  document.getElementById('monthLabel').innerText = currentDate.toLocaleDateString('es', {
+  document.getElementById('monthLabel').innerText = currentDate.toLocaleDateString('es-CO', {
     month: 'long',
-    year: 'numeric'
+    year: 'numeric',
+    timeZone: 'America/Bogota'
   });
 
   const calendarGrid = document.getElementById('calendarGrid');
@@ -72,8 +73,16 @@ function renderCalendar() {
 
   const firstDay = new Date(y, m, 1).getDay();
   const daysInMonth = new Date(y, m + 1, 0).getDate();
+  
+  // Obtener fecha actual en hora de Colombia
   const today = new Date();
-  const todayStr = today.toISOString().slice(0, 10);
+  const todayUTC = new Date(Date.UTC(
+    today.getFullYear(),
+    today.getMonth(),
+    today.getDate()
+  ));
+  const todayColombia = new Date(todayUTC.getTime() - (5 * 60 * 60 * 1000));
+  const todayStr = todayColombia.toISOString().slice(0, 10);
 
   for (let i = 0; i < firstDay; i++) calendarGrid.innerHTML += '<div></div>';
 
@@ -140,12 +149,18 @@ function showDayMovements(date) {
 }
 
 function formatDate(dateStr) {
-  const date = new Date(dateStr);
-  return date.toLocaleDateString('es', {
+  const [year, month, day] = dateStr.split('-');
+  const date = new Date(Date.UTC(year, month - 1, day));
+  
+  // Ajustar a hora de Colombia (UTC-5)
+  const dateColombia = new Date(date.getTime() + (5 * 60 * 60 * 1000));
+  
+  return dateColombia.toLocaleDateString('es-CO', {
     weekday: 'long',
     year: 'numeric',
     month: 'long',
-    day: 'numeric'
+    day: 'numeric',
+    timeZone: 'America/Bogota'
   });
 }
 
@@ -168,7 +183,11 @@ function renderChart() {
   let filteredMovements = db.movements.filter(m => m.type === 'egreso');
   
   if (selectedMonth) {
-    filteredMovements = filteredMovements.filter(m => m.date.startsWith(selectedMonth));
+    filteredMovements = filteredMovements.filter(m => {
+      // Extraer mes y año correctamente considerando la fecha como string
+      const movMonth = m.date.slice(0, 7); // "YYYY-MM"
+      return movMonth === selectedMonth;
+    });
   }
   
   const data = {};
@@ -196,6 +215,18 @@ function renderChart() {
       plugins: {
         legend: {
           position: 'bottom'
+        },
+        tooltip: {
+          callbacks: {
+            label: function(context) {
+              let label = context.label || '';
+              if (label) {
+                label += ': ';
+              }
+              label += '$' + context.raw;
+              return label;
+            }
+          }
         }
       }
     }
@@ -213,7 +244,9 @@ function populateMonthSelect() {
   
   db.movements.forEach(m => {
     if (m.type === 'egreso') {
-      months.add(m.date.slice(0, 7)); // YYYY-MM
+      // Usar la fecha directamente del string (YYYY-MM-DD)
+      const monthStr = m.date.slice(0, 7); // "YYYY-MM"
+      months.add(monthStr);
     }
   });
   
@@ -226,10 +259,19 @@ function populateMonthSelect() {
   const sortedMonths = Array.from(months).sort().reverse();
   
   sortedMonths.forEach(month => {
-    const date = new Date(month + '-01');
+    const [year, monthNum] = month.split('-');
+    const date = new Date(Date.UTC(year, monthNum - 1, 1));
+    
+    // Ajustar a hora de Colombia
+    const dateColombia = new Date(date.getTime() + (5 * 60 * 60 * 1000));
+    
     const option = document.createElement('option');
     option.value = month;
-    option.text = date.toLocaleDateString('es', { month: 'long', year: 'numeric' });
+    option.text = dateColombia.toLocaleDateString('es-CO', { 
+      month: 'long', 
+      year: 'numeric',
+      timeZone: 'America/Bogota'
+    });
     monthSelect.appendChild(option);
   });
 }
@@ -237,7 +279,10 @@ function populateMonthSelect() {
 function exportTXT() {
   let txt = 'dia;titulo;descripcion;monto;tipo\n';
   db.movements.forEach(m => {
-    txt += `${m.date};${m.title};${m.desc || ''};${m.amount};${m.type}\n`;
+    // Formatear fecha para exportación en formato colombiano
+    const [year, month, day] = m.date.split('-');
+    const dateFormatted = `${day}/${month}/${year}`;
+    txt += `${dateFormatted};${m.title};${m.desc || ''};${m.amount};${m.type}\n`;
   });
 
   const a = document.createElement('a');
@@ -289,10 +334,15 @@ function renderDebts() {
   }
   
   db.debts.forEach((d, i) => {
+    // Formatear fecha para mostrar
+    const [year, month, day] = d.date.split('-');
+    const dateFormatted = `${day}/${month}/${year}`;
+    
     debtList.innerHTML += `
       <div class="card">
         <b>${d.title}</b> (${d.person})
         <p>${d.desc}</p>
+        <p>Fecha: ${dateFormatted}</p>
         <p>Total: $${d.amount} | Restante: $${d.remaining}</p>
         <div style="display: flex; gap: 0.5rem;">
           <input type="number" id="p${i}" placeholder="Abono" style="flex: 1;" />
@@ -314,9 +364,19 @@ function payDebt(i) {
 
   d.remaining -= value;
 
+  // Obtener fecha actual en formato colombiano
+  const today = new Date();
+  const todayUTC = new Date(Date.UTC(
+    today.getFullYear(),
+    today.getMonth(),
+    today.getDate()
+  ));
+  const todayColombia = new Date(todayUTC.getTime() - (5 * 60 * 60 * 1000));
+  const todayStr = todayColombia.toISOString().slice(0, 10);
+
   db.movements.push({
     id: Date.now(),
-    date: new Date().toISOString().slice(0, 10),
+    date: todayStr,
     type: d.type === 'meDeben' ? 'ingreso' : 'egreso',
     title: 'Abono ' + d.title,
     desc: '',
@@ -342,7 +402,12 @@ function renderFiltered() {
       m.title.toLowerCase().includes(filterTitle.value.toLowerCase()) &&
       m.amount >= Number(filterAmount.value || 0)
     )
-    .sort((a, b) => new Date(b.date) - new Date(a.date));
+    .sort((a, b) => {
+      // Ordenar por fecha descendente
+      const dateA = new Date(a.date);
+      const dateB = new Date(b.date);
+      return dateB - dateA;
+    });
   
   if (filtered.length === 0) {
     filterResults.innerHTML = '<p>No se encontraron movimientos</p>';
@@ -350,10 +415,14 @@ function renderFiltered() {
   }
   
   filtered.forEach(m => {
+    // Formatear fecha para mostrar
+    const [year, month, day] = m.date.split('-');
+    const dateFormatted = `${day}/${month}/${year}`;
+    
     filterResults.innerHTML += `
       <div class="movement-item">
         <div>
-          <strong>${m.date}</strong>
+          <strong>${dateFormatted}</strong>
           <div>${m.title} - ${m.type === 'ingreso' ? '➕' : '➖'} $${m.amount}</div>
           ${m.desc ? `<small>${m.desc}</small>` : ''}
         </div>
@@ -414,12 +483,17 @@ function openModal(date) {
   } else {
     modalList.innerHTML = '';
     dayMovs.forEach(mov => {
+      // Formatear fecha para mostrar
+      const [year, month, day] = mov.date.split('-');
+      const dateFormatted = `${day}/${month}/${year}`;
+      
       modalList.innerHTML += `
         <div class="modal-movement-item">
           <div style="display: flex; justify-content: space-between; align-items: start;">
             <div>
               <strong>${mov.title}</strong>
               <div>${mov.type === 'ingreso' ? 'Ingreso' : 'Egreso'}: $${mov.amount}</div>
+              <div><small>${dateFormatted}</small></div>
               ${mov.desc ? `<small>${mov.desc}</small>` : ''}
             </div>
             <div style="display: flex; gap: 0.5rem;">
@@ -451,6 +525,17 @@ function showView(id, btn) {
   }
 }
 
+function getCurrentDateColombia() {
+  const now = new Date();
+  const nowUTC = new Date(Date.UTC(
+    now.getFullYear(),
+    now.getMonth(),
+    now.getDate()
+  ));
+  const nowColombia = new Date(nowUTC.getTime() - (5 * 60 * 60 * 1000));
+  return nowColombia.toISOString().slice(0, 10);
+}
+
 // Inicializar
 updateBalance();
 renderCalendar();
@@ -458,6 +543,16 @@ renderDebts();
 renderChart();
 populateMonthSelect();
 
-// Establecer fecha actual en formulario por defecto
-document.getElementById('movDate').value = new Date().toISOString().slice(0, 10);
-document.getElementById('debtDate').value = new Date().toISOString().slice(0, 10);
+// Establecer fecha actual en formulario por defecto (hora Colombia)
+document.getElementById('movDate').value = getCurrentDateColombia();
+document.getElementById('debtDate').value = getCurrentDateColombia();
+
+// Cerrar modal al hacer clic fuera
+document.getElementById('movementModal').addEventListener('click', function(e) {
+  if (e.target === this) {
+    closeModal();
+  }
+});
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('./sw.js');
+}

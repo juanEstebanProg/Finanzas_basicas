@@ -7,6 +7,8 @@
   <link rel="stylesheet" href="styles.css" />
   <!-- Chart.js -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#020617">
 </head>
 <body>
 
@@ -91,9 +93,9 @@
 <!-- Modal para editar/eliminar movimientos -->
 <div id="movementModal" class="modal">
   <div class="modal-content">
-    <h3>Editar/Eliminar Movimiento</h3>
+    <h3 id="modalTitle">Movimientos</h3>
     <div id="modalMovementsList"></div>
-    <button onclick="closeModal()" class="secondary">Cerrar</button>
+    <button onclick="closeModal()" class="secondary" style="margin-top: 1rem;">Cerrar</button>
   </div>
 </div>
 
