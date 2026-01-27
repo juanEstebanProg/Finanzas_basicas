@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Finanzas Personales</title>
+  <link rel="stylesheet" href="styles.css" />
+  <!-- Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+
+<header>📊 Finanzas Personales</header>
+
+<div id="home" class="view active">
+  <div class="card">
+    <h3>Balance total</h3>
+    <h2 id="balance">$0</h2>
+  </div>
+
+  <div class="card">
+    <h3>Gráfica de gastos</h3>
+    <canvas id="expensesChart"></canvas>
+  </div>
+
+  <button class="primary" onclick="exportTXT()">Exportar TXT</button>
+</div>
+
+<div id="calendar" class="view">
+  <div class="card">
+    <div class="calendar-header">
+      <button onclick="prevMonth()">◀</button>
+      <h3 id="monthLabel"></h3>
+      <button onclick="nextMonth()">▶</button>
+    </div>
+    <div id="calendarGrid" class="calendar-grid"></div>
+  </div>
+
+  <div class="card">
+    <h3>Nuevo movimiento</h3>
+    <input type="date" id="movDate" />
+    <select id="movType">
+      <option value="ingreso">Ingreso</option>
+      <option value="egreso">Egreso</option>
+    </select>
+    <input id="movTitle" placeholder="Título" />
+    <textarea id="movDesc" placeholder="Descripción (opcional)"></textarea>
+    <input type="number" id="movAmount" placeholder="Monto" />
+    <button class="primary" onclick="addMovement()">Guardar</button>
+  </div>
+</div>
+
+<div id="filter" class="view">
+  <div class="card">
+    <h3>Filtrar movimientos</h3>
+    <input id="filterTitle" placeholder="Título" oninput="renderFiltered()" />
+    <input type="number" id="filterAmount" placeholder="Monto mínimo" oninput="renderFiltered()" />
+    <div id="filterResults"></div>
+  </div>
+</div>
+
+<div id="debts" class="view">
+  <div class="card">
+    <h3>Nueva deuda</h3>
+    <select id="debtType">
+      <option value="meDeben">Me deben</option>
+      <option value="debo">Debo</option>
+    </select>
+    <input id="debtPerson" placeholder="Persona" />
+    <input id="debtTitle" placeholder="Título" />
+    <textarea id="debtDesc" placeholder="Descripción"></textarea>
+    <input type="number" id="debtAmount" placeholder="Monto" />
+    <input type="date" id="debtDate" />
+    <button class="primary" onclick="addDebt()">Guardar deuda</button>
+  </div>
+
+  <div class="card">
+    <h3>Deudas activas</h3>
+    <div id="debtList"></div>
+  </div>
+</div>
+
+<nav>
+  <button class="active" onclick="showView('home', this)">Resumen</button>
+  <button onclick="showView('calendar', this)">Calendario</button>
+  <button onclick="showView('filter', this)">Filtros</button>
+  <button onclick="showView('debts', this)">Deudas</button>
+</nav>
+
+<script src="app.js"></script>
+</body>
+</html>

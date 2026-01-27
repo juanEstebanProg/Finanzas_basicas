@@ -1,0 +1,94 @@
+body {
+  margin: 0;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont;
+  background: #0f172a;
+  color: #e5e7eb;
+}
+
+header {
+  padding: 1rem;
+  background: #020617;
+  text-align: center;
+  font-weight: bold;
+}
+
+nav {
+  display: flex;
+  position: fixed;
+  bottom: 0;
+  width: 100%;
+  background: #020617;
+}
+
+nav button {
+  flex: 1;
+  padding: 0.8rem;
+  border: none;
+  background: none;
+  color: #e5e7eb;
+}
+
+nav button.active {
+  background: #1e293b;
+}
+
+.view {
+  display: none;
+  padding: 1rem;
+  padding-bottom: 4rem;
+}
+
+.view.active {
+  display: block;
+}
+
+.card {
+  background: #020617;
+  border-radius: 14px;
+  padding: 1rem;
+  margin-bottom: 1rem;
+}
+
+input, textarea, select {
+  width: 100%;
+  margin: 0.4rem 0;
+  padding: 0.6rem;
+  border-radius: 8px;
+  border: none;
+  background: #1e293b;
+  color: #e5e7eb;
+}
+
+.primary {
+  width: 100%;
+  background: #22c55e;
+  color: #022c22;
+  border: none;
+  border-radius: 8px;
+  padding: 0.6rem;
+  font-weight: bold;
+}
+
+.calendar-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.calendar-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 0.3rem;
+}
+
+.day {
+  background: #1e293b;
+  padding: 0.5rem;
+  border-radius: 6px;
+  text-align: center;
+  font-size: 0.8rem;
+}
+
+.day.has {
+  background: #334155;
+}
