@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-  <meta charset="UTF-8" />
+    <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Finanzas Personales</title>
   <link rel="stylesheet" href="styles.css" />
@@ -9,7 +9,6 @@
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <link rel="manifest" href="/Finanzas_basicas/manifest.json">
   <meta name="theme-color" content="#020617">
-
 </head>
 <body>
 
@@ -54,7 +53,7 @@
     </select>
     <input id="movTitle" placeholder="Título" />
     <textarea id="movDesc" placeholder="Descripción (opcional)"></textarea>
-    <input type="number" id="movAmount" placeholder="Monto" />
+    <input type="text" id="movAmount" placeholder="Monto (ej: 1.000.500,25)" inputmode="decimal" />
     <button class="primary" onclick="addMovement()">Guardar</button>
     
     <div id="dayMovements" class="day-movements"></div>
@@ -65,7 +64,7 @@
   <div class="card">
     <h3>Filtrar movimientos</h3>
     <input id="filterTitle" placeholder="Título" oninput="renderFiltered()" />
-    <input type="number" id="filterAmount" placeholder="Monto mínimo" oninput="renderFiltered()" />
+    <input type="text" id="filterAmount" placeholder="Monto mínimo (ej: 50.000)" oninput="renderFiltered()" inputmode="decimal" />
     <div id="filterResults"></div>
   </div>
 </div>
@@ -80,7 +79,7 @@
     <input id="debtPerson" placeholder="Persona" />
     <input id="debtTitle" placeholder="Título" />
     <textarea id="debtDesc" placeholder="Descripción"></textarea>
-    <input type="number" id="debtAmount" placeholder="Monto" />
+    <input type="text" id="debtAmount" placeholder="Monto (ej: 500.000,00)" inputmode="decimal" />
     <input type="date" id="debtDate" />
     <button class="primary" onclick="addDebt()">Guardar deuda</button>
   </div>

@@ -8,6 +8,23 @@ let chart;
 let chartType = 'pie'; // 'pie' o 'bar'
 let selectedDay = null;
 
+// Función para formatear números al estilo colombiano
+function formatNumber(num) {
+  if (num === null || num === undefined) return '0';
+  return new Intl.NumberFormat('es-CO', {
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 2
+  }).format(num);
+}
+
+// Función para convertir string con formato colombiano a número
+function parseColombianNumber(str) {
+  if (!str) return 0;
+  // Remover puntos de separación de miles y reemplazar coma decimal por punto
+  const cleanStr = str.replace(/\./g, '').replace(',', '.');
+  return parseFloat(cleanStr) || 0;
+}
+
 function saveDB() {
   localStorage.setItem('financeDB', JSON.stringify(db));
   updateBalance();
@@ -22,7 +39,7 @@ function updateBalance() {
   db.movements.forEach(m => {
     total += m.type === 'ingreso' ? m.amount : -m.amount;
   });
-  document.getElementById('balance').innerText = `$${total}`;
+  document.getElementById('balance').innerText = `$${formatNumber(total)}`;
 }
 
 function addMovement() {
@@ -37,13 +54,16 @@ function addMovement() {
     return;
   }
   
+  // Parsear el monto con formato colombiano
+  const amount = parseColombianNumber(movAmount.value);
+  
   const movement = {
     id: Date.now(),
-    date: movDate.value, // Guardamos la fecha como string YYYY-MM-DD
+    date: movDate.value,
     type: movType.value,
     title: movTitle.value,
     desc: movDesc.value,
-    amount: Number(movAmount.value)
+    amount: amount
   };
   
   db.movements.push(movement);
@@ -64,8 +84,7 @@ function renderCalendar() {
 
   document.getElementById('monthLabel').innerText = currentDate.toLocaleDateString('es-CO', {
     month: 'long',
-    year: 'numeric',
-    timeZone: 'America/Bogota'
+    year: 'numeric'
   });
 
   const calendarGrid = document.getElementById('calendarGrid');
@@ -74,15 +93,9 @@ function renderCalendar() {
   const firstDay = new Date(y, m, 1).getDay();
   const daysInMonth = new Date(y, m + 1, 0).getDate();
   
-  // Obtener fecha actual en hora de Colombia
+  // Obtener fecha actual en Colombia
   const today = new Date();
-  const todayUTC = new Date(Date.UTC(
-    today.getFullYear(),
-    today.getMonth(),
-    today.getDate()
-  ));
-  const todayColombia = new Date(todayUTC.getTime() - (5 * 60 * 60 * 1000));
-  const todayStr = todayColombia.toISOString().slice(0, 10);
+  const todayStr = today.toISOString().slice(0, 10);
 
   for (let i = 0; i < firstDay; i++) calendarGrid.innerHTML += '<div></div>';
 
@@ -133,7 +146,7 @@ function showDayMovements(date) {
       <div class="movement-item">
         <div>
           <strong>${mov.title}</strong>
-          <div>${mov.type === 'ingreso' ? '➕' : '➖'} $${mov.amount}</div>
+          <div>${mov.type === 'ingreso' ? '➕' : '➖'} $${formatNumber(mov.amount)}</div>
           ${mov.desc ? `<small>${mov.desc}</small>` : ''}
         </div>
         <div class="movement-actions">
@@ -150,17 +163,13 @@ function showDayMovements(date) {
 
 function formatDate(dateStr) {
   const [year, month, day] = dateStr.split('-');
-  const date = new Date(Date.UTC(year, month - 1, day));
+  const date = new Date(year, month - 1, day);
   
-  // Ajustar a hora de Colombia (UTC-5)
-  const dateColombia = new Date(date.getTime() + (5 * 60 * 60 * 1000));
-  
-  return dateColombia.toLocaleDateString('es-CO', {
+  return date.toLocaleDateString('es-CO', {
     weekday: 'long',
     year: 'numeric',
     month: 'long',
-    day: 'numeric',
-    timeZone: 'America/Bogota'
+    day: 'numeric'
   });
 }
 
@@ -184,8 +193,7 @@ function renderChart() {
   
   if (selectedMonth) {
     filteredMovements = filteredMovements.filter(m => {
-      // Extraer mes y año correctamente considerando la fecha como string
-      const movMonth = m.date.slice(0, 7); // "YYYY-MM"
+      const movMonth = m.date.slice(0, 7);
       return movMonth === selectedMonth;
     });
   }
@@ -223,7 +231,7 @@ function renderChart() {
               if (label) {
                 label += ': ';
               }
-              label += '$' + context.raw;
+              label += '$' + formatNumber(context.raw);
               return label;
             }
           }
@@ -244,33 +252,26 @@ function populateMonthSelect() {
   
   db.movements.forEach(m => {
     if (m.type === 'egreso') {
-      // Usar la fecha directamente del string (YYYY-MM-DD)
-      const monthStr = m.date.slice(0, 7); // "YYYY-MM"
+      const monthStr = m.date.slice(0, 7);
       months.add(monthStr);
     }
   });
   
-  // Limpiar opciones excepto la primera
   while (monthSelect.options.length > 1) {
     monthSelect.remove(1);
   }
   
-  // Ordenar meses de más reciente a más antiguo
   const sortedMonths = Array.from(months).sort().reverse();
   
   sortedMonths.forEach(month => {
     const [year, monthNum] = month.split('-');
-    const date = new Date(Date.UTC(year, monthNum - 1, 1));
-    
-    // Ajustar a hora de Colombia
-    const dateColombia = new Date(date.getTime() + (5 * 60 * 60 * 1000));
+    const date = new Date(year, monthNum - 1, 1);
     
     const option = document.createElement('option');
     option.value = month;
-    option.text = dateColombia.toLocaleDateString('es-CO', { 
+    option.text = date.toLocaleDateString('es-CO', { 
       month: 'long', 
-      year: 'numeric',
-      timeZone: 'America/Bogota'
+      year: 'numeric'
     });
     monthSelect.appendChild(option);
   });
@@ -279,10 +280,9 @@ function populateMonthSelect() {
 function exportTXT() {
   let txt = 'dia;titulo;descripcion;monto;tipo\n';
   db.movements.forEach(m => {
-    // Formatear fecha para exportación en formato colombiano
     const [year, month, day] = m.date.split('-');
     const dateFormatted = `${day}/${month}/${year}`;
-    txt += `${dateFormatted};${m.title};${m.desc || ''};${m.amount};${m.type}\n`;
+    txt += `${dateFormatted};${m.title};${m.desc || ''};${formatNumber(m.amount)};${m.type}\n`;
   });
 
   const a = document.createElement('a');
@@ -292,15 +292,18 @@ function exportTXT() {
 }
 
 function addDebt() {
+  // Parsear el monto con formato colombiano
+  const amount = parseColombianNumber(document.getElementById('debtAmount').value);
+  
   const d = {
     id: Date.now(),
     type: document.getElementById('debtType').value,
     person: document.getElementById('debtPerson').value,
     title: document.getElementById('debtTitle').value,
     desc: document.getElementById('debtDesc').value,
-    amount: Number(document.getElementById('debtAmount').value),
+    amount: amount,
     date: document.getElementById('debtDate').value,
-    remaining: Number(document.getElementById('debtAmount').value)
+    remaining: amount
   };
 
   db.debts.push(d);
@@ -311,7 +314,7 @@ function addDebt() {
     type: d.type === 'meDeben' ? 'egreso' : 'ingreso',
     title: 'Préstamo ' + d.title,
     desc: d.desc,
-    amount: d.amount
+    amount: amount
   });
 
   saveDB();
@@ -334,7 +337,6 @@ function renderDebts() {
   }
   
   db.debts.forEach((d, i) => {
-    // Formatear fecha para mostrar
     const [year, month, day] = d.date.split('-');
     const dateFormatted = `${day}/${month}/${year}`;
     
@@ -343,7 +345,7 @@ function renderDebts() {
         <b>${d.title}</b> (${d.person})
         <p>${d.desc}</p>
         <p>Fecha: ${dateFormatted}</p>
-        <p>Total: $${d.amount} | Restante: $${d.remaining}</p>
+        <p>Total: $${formatNumber(d.amount)} | Restante: $${formatNumber(d.remaining)}</p>
         <div style="display: flex; gap: 0.5rem; align-items: center; width: 100px; height: 32px;">
           <input type="number" id="p${i}" placeholder="Abono" style="flex: 1; width: 100px; height: 32px;" />
           <button class="primary" onclick="payDebt(${i})">Abonar</button>
@@ -354,7 +356,8 @@ function renderDebts() {
 }
 
 function payDebt(i) {
-  const value = Number(document.getElementById('p' + i).value);
+  const valueInput = document.getElementById('p' + i).value;
+  const value = parseColombianNumber(valueInput);
   const d = db.debts[i];
 
   if (!value || value <= 0) {
@@ -364,15 +367,9 @@ function payDebt(i) {
 
   d.remaining -= value;
 
-  // Obtener fecha actual en formato colombiano
+  // Usar fecha actual
   const today = new Date();
-  const todayUTC = new Date(Date.UTC(
-    today.getFullYear(),
-    today.getMonth(),
-    today.getDate()
-  ));
-  const todayColombia = new Date(todayUTC.getTime() - (5 * 60 * 60 * 1000));
-  const todayStr = todayColombia.toISOString().slice(0, 10);
+  const todayStr = today.toISOString().slice(0, 10);
 
   db.movements.push({
     id: Date.now(),
@@ -393,17 +390,19 @@ function payDebt(i) {
 function renderFiltered() {
   const filterResults = document.getElementById('filterResults');
   const filterTitle = document.getElementById('filterTitle');
-  const filterAmount = document.getElementById('filterAmount');
+  const filterAmountInput = document.getElementById('filterAmount');
+  
+  // Parsear el monto mínimo con formato colombiano
+  const minAmount = parseColombianNumber(filterAmountInput.value);
   
   filterResults.innerHTML = '';
   
   const filtered = db.movements
     .filter(m =>
       m.title.toLowerCase().includes(filterTitle.value.toLowerCase()) &&
-      m.amount >= Number(filterAmount.value || 0)
+      m.amount >= minAmount
     )
     .sort((a, b) => {
-      // Ordenar por fecha descendente
       const dateA = new Date(a.date);
       const dateB = new Date(b.date);
       return dateB - dateA;
@@ -415,7 +414,6 @@ function renderFiltered() {
   }
   
   filtered.forEach(m => {
-    // Formatear fecha para mostrar
     const [year, month, day] = m.date.split('-');
     const dateFormatted = `${day}/${month}/${year}`;
     
@@ -423,7 +421,7 @@ function renderFiltered() {
       <div class="movement-item">
         <div>
           <strong>${dateFormatted}</strong>
-          <div>${m.title} - ${m.type === 'ingreso' ? '➕' : '➖'} $${m.amount}</div>
+          <div>${m.title} - ${m.type === 'ingreso' ? '➕' : '➖'} $${formatNumber(m.amount)}</div>
           ${m.desc ? `<small>${m.desc}</small>` : ''}
         </div>
         <div class="movement-actions">
@@ -444,7 +442,8 @@ function editMovement(id) {
   document.getElementById('movType').value = mov.type;
   document.getElementById('movTitle').value = mov.title;
   document.getElementById('movDesc').value = mov.desc;
-  document.getElementById('movAmount').value = mov.amount;
+  // Formatear el monto para mostrarlo
+  document.getElementById('movAmount').value = formatNumber(mov.amount);
   
   // Remover el movimiento para editar
   deleteMovement(id, false);
@@ -475,15 +474,17 @@ function deleteMovement(id, confirm = true) {
 function openModal(date) {
   const modal = document.getElementById('movementModal');
   const modalList = document.getElementById('modalMovementsList');
+  const modalTitle = document.getElementById('modalTitle');
   
   const dayMovs = db.movements.filter(m => m.date === date);
+  
+  modalTitle.innerText = `Movimientos del ${formatDate(date)}`;
   
   if (dayMovs.length === 0) {
     modalList.innerHTML = '<p>No hay movimientos para este día</p>';
   } else {
     modalList.innerHTML = '';
     dayMovs.forEach(mov => {
-      // Formatear fecha para mostrar
       const [year, month, day] = mov.date.split('-');
       const dateFormatted = `${day}/${month}/${year}`;
       
@@ -492,7 +493,7 @@ function openModal(date) {
           <div style="display: flex; justify-content: space-between; align-items: start;">
             <div>
               <strong>${mov.title}</strong>
-              <div>${mov.type === 'ingreso' ? 'Ingreso' : 'Egreso'}: $${mov.amount}</div>
+              <div>${mov.type === 'ingreso' ? 'Ingreso' : 'Egreso'}: $${formatNumber(mov.amount)}</div>
               <div><small>${dateFormatted}</small></div>
               ${mov.desc ? `<small>${mov.desc}</small>` : ''}
             </div>
@@ -519,21 +520,9 @@ function showView(id, btn) {
   document.querySelectorAll('nav button').forEach(b => b.classList.remove('active'));
   btn.classList.add('active');
   
-  // Si vamos al calendario, renderizar con el día seleccionado
   if (id === 'calendar') {
     renderCalendar();
   }
-}
-
-function getCurrentDateColombia() {
-  const now = new Date();
-  const nowUTC = new Date(Date.UTC(
-    now.getFullYear(),
-    now.getMonth(),
-    now.getDate()
-  ));
-  const nowColombia = new Date(nowUTC.getTime() - (5 * 60 * 60 * 1000));
-  return nowColombia.toISOString().slice(0, 10);
 }
 
 // Inicializar
@@ -543,9 +532,11 @@ renderDebts();
 renderChart();
 populateMonthSelect();
 
-// Establecer fecha actual en formulario por defecto (hora Colombia)
-document.getElementById('movDate').value = getCurrentDateColombia();
-document.getElementById('debtDate').value = getCurrentDateColombia();
+// Establecer fecha actual en formulario por defecto
+const today = new Date();
+const todayStr = today.toISOString().slice(0, 10);
+document.getElementById('movDate').value = todayStr;
+document.getElementById('debtDate').value = todayStr;
 
 // Cerrar modal al hacer clic fuera
 document.getElementById('movementModal').addEventListener('click', function(e) {
@@ -553,6 +544,7 @@ document.getElementById('movementModal').addEventListener('click', function(e) {
     closeModal();
   }
 });
+//instalar
 if ('serviceWorker' in navigator) {
   navigator.serviceWorker.register('/Finanzas_basicas/sw.js');
 }
