@@ -1,10 +1,13 @@
 const CACHE_NAME = 'finanzas-v1';
 
 const FILES_TO_CACHE = [
-  './',
-  './index.html',
-  './styles.css',
-  './app.js'
+  '/Finanzas_basicas/',
+  '/Finanzas_basicas/index.html',
+  '/Finanzas_basicas/styles.css',
+  '/Finanzas_basicas/app.js',
+  '/Finanzas_basicas/manifest.json',
+  '/Finanzas_basicas/icon-192.png',
+  '/Finanzas_basicas/icon-512.png'
 ];
 
 self.addEventListener('install', e => {

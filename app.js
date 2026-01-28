@@ -554,5 +554,5 @@ document.getElementById('movementModal').addEventListener('click', function(e) {
   }
 });
 if ('serviceWorker' in navigator) {
-  navigator.serviceWorker.register('./sw.js');
+  navigator.serviceWorker.register('/Finanzas_basicas/sw.js');
 }

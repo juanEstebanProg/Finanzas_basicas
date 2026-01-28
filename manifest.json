@@ -1,7 +1,8 @@
 {
   "name": "Mis Finanzas",
   "short_name": "Finanzas",
-  "start_url": ".",
+  "start_url": "/Finanzas_basicas/",
+  "scope": "/Finanzas_basicas/",
   "display": "standalone",
   "background_color": "#020617",
   "theme_color": "#020617",
