@@ -344,8 +344,8 @@ function renderDebts() {
         <p>${d.desc}</p>
         <p>Fecha: ${dateFormatted}</p>
         <p>Total: $${d.amount} | Restante: $${d.remaining}</p>
-        <div style="display: flex; gap: 0.5rem;">
-          <input type="number" id="p${i}" placeholder="Abono" style="flex: 1;" />
+        <div style="display: flex; gap: 0.5rem; align-items: center; width: 100px; height: 32px;">
+          <input type="number" id="p${i}" placeholder="Abono" style="flex: 1; width: 100px; height: 32px;" />
           <button class="primary" onclick="payDebt(${i})">Abonar</button>
         </div>
       </div>
