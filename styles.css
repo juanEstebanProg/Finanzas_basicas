@@ -189,3 +189,28 @@ input, textarea, select {
   margin: 0.5rem 0;
   border-radius: 8px;
 }
+/* Estilos para el resumen detallado */
+.debt-item {
+  border-left: 4px solid;
+}
+
+.debt-item[data-type="meDeben"] {
+  border-left-color: #3b82f6;
+}
+
+.debt-item[data-type="debo"] {
+  border-left-color: #ef4444;
+}
+
+/* Estilos para inputs con formateo automático */
+input.formatted-input {
+  text-align: right;
+  font-family: 'Courier New', monospace;
+}
+
+/* Estilos para los botones de deuda */
+.debt-actions {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+}
