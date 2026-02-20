@@ -5,7 +5,6 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Finanzas Personales</title>
   <link rel="stylesheet" href="styles.css" />
-  <!-- Chart.js -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <link rel="manifest" href="/Finanzas_basicas/manifest.json">
   <meta name="theme-color" content="#020617">
@@ -16,7 +15,10 @@
 
 <div id="home" class="view active">
   <div class="card">
-    <h3>Balance total</h3>
+    <div style="display: flex; justify-content: space-between; align-items: center;">
+      <h3>Balance total</h3>
+      <button class="secondary" onclick="showIncomeDetails()">Ver detalle</button>
+    </div>
     <h2 id="balance">$0</h2>
   </div>
 
@@ -49,9 +51,12 @@
   <div class="card">
     <h3 id="movementsTitle">Nuevo movimiento</h3>
     <input type="date" id="movDate" />
-    <select id="movType">
+    <select id="movType" onchange="toggleIncomeSelect()">
       <option value="ingreso">Ingreso</option>
       <option value="egreso">Egreso</option>
+    </select>
+    <select id="incomeSourceSelect" style="display: none;">
+      <option value="">Cargar a:</option>
     </select>
     <input id="movTitle" placeholder="Título" />
     <textarea id="movDesc" placeholder="Descripción (opcional)"></textarea>
@@ -92,12 +97,19 @@
   </div>
 </div>
 
-<!-- Modal para editar/eliminar movimientos -->
 <div id="movementModal" class="modal">
   <div class="modal-content">
     <h3 id="modalTitle">Movimientos</h3>
     <div id="modalMovementsList"></div>
     <button onclick="closeModal()" class="secondary" style="margin-top: 1rem;">Cerrar</button>
+  </div>
+</div>
+
+<div id="incomeDetailModal" class="modal">
+  <div class="modal-content">
+    <h3>Detalle de Ingresos</h3>
+    <div id="incomeDetailList"></div>
+    <button onclick="closeIncomeModal()" class="secondary" style="margin-top: 1rem;">Cerrar</button>
   </div>
 </div>
 
