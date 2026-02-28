@@ -332,26 +332,69 @@ function populateMonthSelect() {
 }
 
 function exportTXT() {
-  let txt = 'dia;titulo;descripcion;monto;tipo\n';
-  db.movements.forEach(m => {
-    const [year, month, day] = m.date.split('-');
-    txt += `${day}/${month}/${year};${m.title};${m.desc || ''};${formatNumber(m.amount)};${m.type}\n`;
-  });
+  const exportData = {
+    movements: db.movements,
+    debts: db.debts,
+    incomeFunds: db.incomeFunds
+  };
+  
   const a = document.createElement('a');
-  a.href = URL.createObjectURL(new Blob([txt], { type: 'text/plain' }));
-  a.download = 'finanzas.txt';
+  a.href = URL.createObjectURL(new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' }));
+  a.download = 'finanzas_completas.json';
   a.click();
 }
 
-function importTXT() { document.getElementById('fileInput').click(); }
+function importTXT() { 
+  document.getElementById('fileInput').click(); 
+}
 
 function handleFileSelect(input) {
   const file = input.files[0];
   if (!file) return;
+  
   const reader = new FileReader();
   reader.onload = function(e) {
     try {
       const content = e.target.result;
+      
+      // Intentar parsear como JSON primero (nuevo formato)
+      try {
+        const importedData = JSON.parse(content);
+        
+        // Verificar que tenga la estructura esperada
+        if (importedData.movements && Array.isArray(importedData.movements) &&
+            importedData.debts && Array.isArray(importedData.debts) &&
+            importedData.incomeFunds && Array.isArray(importedData.incomeFunds)) {
+          
+          if (db.movements.length === 0 && db.debts.length === 0 && db.incomeFunds.length === 0) {
+            db.movements = importedData.movements;
+            db.debts = importedData.debts;
+            db.incomeFunds = importedData.incomeFunds;
+            alert(`Importación exitosa: ${importedData.movements.length} movimientos, ${importedData.debts.length} deudas`);
+          } else {
+            const action = confirm(`Se importarán datos completos.\nAceptar: Añadir\nCancelar: Reemplazar`);
+            if (action) {
+              db.movements.push(...importedData.movements);
+              db.debts.push(...importedData.debts);
+              db.incomeFunds.push(...importedData.incomeFunds);
+            } else {
+              db.movements = importedData.movements;
+              db.debts = importedData.debts;
+              db.incomeFunds = importedData.incomeFunds;
+            }
+          }
+          
+          saveDB();
+          alert(`Importación exitosa: ${importedData.movements.length} movimientos, ${importedData.debts.length} deudas`);
+          input.value = '';
+          return;
+        }
+      } catch (jsonError) {
+        // Si no es JSON, intentar con el formato antiguo (CSV)
+        console.log('No es formato JSON, intentando con CSV antiguo');
+      }
+      
+      // Formato antiguo (solo movimientos en CSV)
       const lines = content.split('\n');
       const importedMovements = [];
       for (let i = 1; i < lines.length; i++) {
@@ -371,25 +414,42 @@ function handleFileSelect(input) {
           amount: amount
         });
       }
+      
       if (importedMovements.length > 0) {
-        if (db.movements.length === 0) db.movements = importedMovements;
-        else {
-          const action = confirm(`Se importarán ${importedMovements.length} movimientos.\nAceptar: Añadir\nCancelar: Reemplazar`);
+        if (db.movements.length === 0) {
+          db.movements = importedMovements;
+        } else {
+          const action = confirm(`Se importarán ${importedMovements.length} movimientos (formato antiguo).\nAceptar: Añadir\nCancelar: Reemplazar`);
           if (action) db.movements.push(...importedMovements);
           else db.movements = importedMovements;
         }
+        
+        // Reconstruir incomeFunds desde los movimientos de ingreso
+        db.incomeFunds = [];
+        db.movements.forEach(m => {
+          if (m.type === 'ingreso' && !db.incomeFunds.some(f => f.id === m.id)) {
+            db.incomeFunds.push({
+              id: m.id,
+              title: m.title,
+              originalAmount: m.amount,
+              remaining: m.amount
+            });
+          }
+        });
+        
         saveDB();
         alert(`Importación exitosa: ${importedMovements.length} movimientos`);
         input.value = '';
-      } else alert('No se encontraron movimientos');
+      } else {
+        alert('No se encontraron movimientos en el archivo');
+      }
     } catch (error) {
       console.error(error);
-      alert('Error al importar. Verifica el formato.');
+      alert('Error al importar. Verifica el formato del archivo.');
     }
   };
   reader.readAsText(file);
 }
-
 function addDebt() {
   const amount = parseColombianNumber(document.getElementById('debtAmount').value);
   const d = {
