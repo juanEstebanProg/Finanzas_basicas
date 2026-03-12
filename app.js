@@ -32,6 +32,7 @@ function saveDB() {
   renderChart();
   populateMonthSelect();
   updateIncomeSelect();
+  renderSummaryCards();
 }
 
 function updateIncomeFunds() {
@@ -773,13 +774,56 @@ function initAutoFormat() {
     input.addEventListener('input', formatInputNumber);
   });
 }
+//
+function renderSummaryCards() {
+  const container = document.getElementById('summaryCards');
+  if (!container) return; // compatibilidad: si no existe el div, no hace nada
 
+  let totalIngresos = 0;
+  let totalEgresos = 0;
+  let totalMeDeben = 0;
+  let totalDebo = 0;
+
+  db.movements.forEach(m => {
+    if (m.type === 'ingreso') totalIngresos += m.amount;
+    else totalEgresos += m.amount;
+  });
+
+  db.debts.forEach(d => {
+    if (d.type === 'meDeben') totalMeDeben += d.remaining;
+    else totalDebo += d.remaining;
+  });
+
+  container.innerHTML = `
+    <h2 style="color:#f1f5f9; font-size:1.2rem; font-weight:700; margin-bottom:0.8rem;">Resumen detallado</h2>
+    <div style="display:grid; grid-template-columns:1fr 1fr; gap:0.75rem;">
+      <div style="background:#16a34a; border-radius:12px; padding:1rem;">
+        <div style="color:#dcfce7; font-size:0.85rem;">Ingresos</div>
+        <div style="color:#ffffff; font-size:1.3rem; font-weight:700;">+$${formatNumber(totalIngresos)}</div>
+      </div>
+      <div style="background:#dc2626; border-radius:12px; padding:1rem;">
+        <div style="color:#fee2e2; font-size:0.85rem;">Egresos</div>
+        <div style="color:#ffffff; font-size:1.3rem; font-weight:700;">-$${formatNumber(totalEgresos)}</div>
+      </div>
+      <div style="background:#2563eb; border-radius:12px; padding:1rem;">
+        <div style="color:#dbeafe; font-size:0.85rem;">Me deben</div>
+        <div style="color:#ffffff; font-size:1.3rem; font-weight:700;">$${formatNumber(totalMeDeben)}</div>
+      </div>
+      <div style="background:#c2410c; border-radius:12px; padding:1rem;">
+        <div style="color:#ffedd5; font-size:0.85rem;">Debo</div>
+        <div style="color:#fbbf24; font-size:1.3rem; font-weight:700;">$${formatNumber(totalDebo)}</div>
+      </div>
+    </div>
+  `;
+}
+//
 document.addEventListener('DOMContentLoaded', function() {
   updateIncomeFunds();
   updateBalance();
   renderCalendar();
   renderDebts();
   renderChart();
+  renderSummaryCards();
   populateMonthSelect();
   const today = new Date();
   const todayStr = today.toISOString().slice(0, 10);
