@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-    <meta charset="UTF-8" />
+  <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Finanzas Personales</title>
   <link rel="stylesheet" href="styles.css" />
@@ -13,15 +13,16 @@
 
 <header>Finanzas Personales</header>
 
+<!-- ===================== HOME ===================== -->
 <div id="home" class="view active">
   <div class="card">
-    <div style="display: flex; justify-content: space-between; align-items: center;">
+    <div style="display:flex;justify-content:space-between;align-items:center;">
       <h3>Balance total</h3>
       <button class="secondary" onclick="showIncomeDetails()">Ver detalle</button>
     </div>
     <h2 id="balance">$0</h2>
   </div>
-<div id="summaryCards" style="padding:1rem;"></div>
+  <div id="summaryCards" style="padding:1rem;"></div>
   <div class="card">
     <h3>Gráfica de gastos</h3>
     <div class="chart-controls">
@@ -32,41 +33,68 @@
     </div>
     <canvas id="expensesChart"></canvas>
   </div>
-
   <button class="secondary" onclick="exportTXT()">Exportar</button>
   <button class="secondary" onclick="importTXT()">Importar</button>
-<input type="file" id="fileInput" accept=".json" style="display: none" onchange="handleFileSelect(this)" />
+  <input type="file" id="fileInput" accept=".json" style="display:none" onchange="handleFileSelect(this)" />
 </div>
 
+<!-- ===================== CALENDAR ===================== -->
 <div id="calendar" class="view">
-  <div class="card">
-    <div class="calendar-header">
-      <button onclick="prevMonth()">◀</button>
-      <h3 id="monthLabel"></h3>
-      <button onclick="nextMonth()">▶</button>
-    </div>
-    <div id="calendarGrid" class="calendar-grid"></div>
+
+  <!-- Mode selector -->
+  <div class="mode-selector-bar">
+    <span class="mode-label">Modo:</span>
+    <select id="calendarModeSelect" onchange="onCalendarModeChange()">
+      <option value="diario">📅 Diario</option>
+      <option value="quincenal">📆 Quincenal</option>
+      <option value="mensual">🗓️ Mensual</option>
+    </select>
   </div>
 
+  <!-- DAILY calendar (shown when mode=diario) -->
+  <div id="dailyCalendarWrap">
+    <div class="card">
+      <div class="calendar-header">
+        <button onclick="prevMonth()">◀</button>
+        <h3 id="monthLabel"></h3>
+        <button onclick="nextMonth()">▶</button>
+      </div>
+      <div id="calendarGrid" class="calendar-grid"></div>
+    </div>
+  </div>
+
+  <!-- PERIOD view (shown when mode=quincenal/mensual) -->
+  <div id="periodCalendarWrap" style="display:none;"></div>
+
+  <!-- Fixed Expenses Section -->
+  <div class="card fixed-expenses-card">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.8rem;">
+      <h3 style="margin:0;">📌 Gastos Fijos</h3>
+      <button class="secondary" onclick="showAddFixedExpense()">+ Añadir</button>
+    </div>
+    <div id="fixedExpensesList"></div>
+  </div>
+
+  <!-- New movement form -->
   <div class="card">
-    <h3 id="movementsTitle">Nuevo movimiento</h3>
+    <h3 id="movementsTitle">📝 Registrar Movimiento</h3>
     <input type="date" id="movDate" />
     <select id="movType" onchange="toggleIncomeSelect()">
       <option value="ingreso">Ingreso</option>
       <option value="egreso">Egreso</option>
     </select>
-    <select id="incomeSourceSelect" style="display: none;">
+    <select id="incomeSourceSelect" style="display:none;">
       <option value="">Cargar a:</option>
     </select>
     <input id="movTitle" placeholder="Título" />
     <textarea id="movDesc" placeholder="Descripción (opcional)"></textarea>
     <input type="text" id="movAmount" placeholder="Monto" inputmode="decimal" />
     <button class="primary" onclick="addMovement()">Guardar</button>
-    
     <div id="dayMovements" class="day-movements"></div>
   </div>
 </div>
 
+<!-- ===================== FILTER ===================== -->
 <div id="filter" class="view">
   <div class="card">
     <h3>Filtrar movimientos</h3>
@@ -76,43 +104,122 @@
   </div>
 </div>
 
+<!-- ===================== DEBTS ===================== -->
 <div id="debts" class="view">
   <div class="card">
-    <h3>Nueva deuda</h3>
-    <select id="debtType">
-      <option value="meDeben">Me deben</option>
-      <option value="debo">Debo</option>
+    <h3>Nueva deuda / préstamo</h3>
+
+    <select id="debtType" onchange="toggleInterestFields()">
+      <option value="presto">💸 Presté (yo presté dinero)</option>
+      <option value="mePrestaron">📥 Me prestaron (me dieron un préstamo)</option>
+      <option value="meDeben">🤝 Me deben (sin salida de dinero)</option>
+      <option value="debo">📤 Debo (sin entrada de dinero)</option>
     </select>
+
     <input id="debtPerson" placeholder="Persona" />
     <input id="debtTitle" placeholder="Título" />
     <textarea id="debtDesc" placeholder="Descripción"></textarea>
-    <input type="text" id="debtAmount" placeholder="Monto " inputmode="decimal" />
+    <input type="text" id="debtAmount" placeholder="Monto capital" inputmode="decimal" oninput="formatInputNumber(event);updateInterestPreview()" />
     <input type="date" id="debtDate" />
-    <button class="primary" onclick="addDebt()">Guardar deuda</button>
+
+    <!-- Interest toggle -->
+    <div class="interest-toggle">
+      <label style="display:flex;align-items:center;gap:0.6rem;cursor:pointer;color:#94a3b8;">
+        <input type="checkbox" id="debtHasInterest" onchange="toggleInterestFields()" style="width:auto;margin:0;accent-color:#22c55e;" />
+        <span>¿Aplica interés?</span>
+      </label>
+    </div>
+
+    <!-- Interest fields -->
+    <div id="interestFields" style="display:none;" class="interest-fields-wrap">
+      <div class="interest-grid">
+        <div>
+          <label class="field-label">Tasa de interés (%)</label>
+          <input type="number" id="debtInterestRate" placeholder="Ej: 2.5" step="0.01" min="0" oninput="updateInterestPreview()" />
+        </div>
+        <div>
+          <label class="field-label">Período de la tasa</label>
+          <select id="debtInterestPeriod" onchange="updateInterestPreview()">
+            <option value="mensual">Mensual</option>
+            <option value="quincenal">Quincenal</option>
+            <option value="anual">Anual</option>
+          </select>
+        </div>
+        <div>
+          <label class="field-label">Tipo de interés</label>
+          <select id="debtInterestType" onchange="updateInterestPreview()">
+            <option value="simple">Simple</option>
+            <option value="compuesto">Compuesto</option>
+          </select>
+        </div>
+        <div>
+          <label class="field-label">Plazo (meses)</label>
+          <input type="number" id="debtTermMonths" placeholder="Ej: 6" min="1" oninput="updateInterestPreview()" />
+        </div>
+      </div>
+      <div id="interestPreview"></div>
+    </div>
+
+    <button class="primary" onclick="addDebt()">Guardar</button>
   </div>
 
   <div class="card">
-    <h3>Deudas activas</h3>
+    <h3>Deudas y préstamos activos</h3>
     <div id="debtList"></div>
   </div>
 </div>
 
+<!-- ===================== MODALS ===================== -->
+
+<!-- Movement detail modal -->
 <div id="movementModal" class="modal">
   <div class="modal-content">
     <h3 id="modalTitle">Movimientos</h3>
     <div id="modalMovementsList"></div>
-    <button onclick="closeModal()" class="secondary" style="margin-top: 1rem;">Cerrar</button>
+    <button onclick="closeModal()" class="secondary" style="margin-top:1rem;width:100%;">Cerrar</button>
   </div>
 </div>
 
+<!-- Income detail modal -->
 <div id="incomeDetailModal" class="modal">
   <div class="modal-content">
     <h3>Detalle de Ingresos</h3>
     <div id="incomeDetailList"></div>
-    <button onclick="closeIncomeModal()" class="secondary" style="margin-top: 1rem;">Cerrar</button>
+    <button onclick="closeIncomeModal()" class="secondary" style="margin-top:1rem;width:100%;">Cerrar</button>
   </div>
 </div>
 
+<!-- Start Period modal -->
+<div id="startPeriodModal" class="modal">
+  <div class="modal-content">
+    <h3 id="startPeriodTitle">Iniciar período</h3>
+    <p id="startPeriodDateRange" style="color:#94a3b8;font-size:0.9rem;margin-bottom:1rem;"></p>
+    <p style="color:#64748b;font-size:0.9rem;margin-bottom:0.5rem;">¿Cuánto recibiste este período?</p>
+    <input type="text" id="startPeriodAmount" placeholder="Monto recibido" inputmode="decimal" style="font-size:1.2rem;font-weight:700;" />
+    <input type="hidden" id="startPeriodNum" value="1" />
+    <button class="primary" onclick="confirmStartPeriod()" style="margin-top:0.8rem;font-size:1rem;">🚀 Confirmar</button>
+    <button onclick="closeStartPeriodModal()" class="secondary" style="margin-top:0.5rem;width:100%;">Cancelar</button>
+  </div>
+</div>
+
+<!-- Fixed Expense modal -->
+<div id="fixedExpenseModal" class="modal">
+  <div class="modal-content">
+    <h3>📌 Nuevo Gasto Fijo</h3>
+    <input id="fixedExpTitle" placeholder="Título (ej: Arriendo, Netflix)" />
+    <textarea id="fixedExpDesc" placeholder="Descripción (opcional)"></textarea>
+    <input type="text" id="fixedExpAmount" placeholder="Monto" inputmode="decimal" />
+    <label class="field-label" style="margin-top:0.5rem;">Frecuencia de pago</label>
+    <select id="fixedExpPeriod">
+      <option value="quincenal">Quincenal</option>
+      <option value="mensual">Mensual</option>
+    </select>
+    <button class="primary" onclick="saveFixedExpense()" style="margin-top:0.8rem;">Guardar gasto fijo</button>
+    <button onclick="closeFixedExpenseModal()" class="secondary" style="margin-top:0.5rem;width:100%;">Cancelar</button>
+  </div>
+</div>
+
+<!-- ===================== NAV ===================== -->
 <nav>
   <button class="active" onclick="showView('home', this)">Resumen</button>
   <button onclick="showView('calendar', this)">Calendario</button>

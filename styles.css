@@ -10,6 +10,8 @@ header {
   background: #020617;
   text-align: center;
   font-weight: bold;
+  font-size: 1.1rem;
+  letter-spacing: 0.03em;
 }
 
 nav {
@@ -18,6 +20,8 @@ nav {
   bottom: 0;
   width: 100%;
   background: #020617;
+  border-top: 1px solid #1e293b;
+  z-index: 100;
 }
 
 nav button {
@@ -25,17 +29,21 @@ nav button {
   padding: 0.8rem;
   border: none;
   background: none;
-  color: #e5e7eb;
+  color: #94a3b8;
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition: color 0.15s, background 0.15s;
 }
 
 nav button.active {
   background: #1e293b;
+  color: #e5e7eb;
 }
 
 .view {
   display: none;
   padding: 1rem;
-  padding-bottom: 4rem;
+  padding-bottom: 5rem;
 }
 
 .view.active {
@@ -58,6 +66,12 @@ input, textarea, select {
   background: #1e293b;
   color: #e5e7eb;
   box-sizing: border-box;
+  font-size: 0.95rem;
+}
+
+textarea {
+  resize: vertical;
+  min-height: 60px;
 }
 
 .primary {
@@ -66,11 +80,15 @@ input, textarea, select {
   color: #022c22;
   border: none;
   border-radius: 8px;
-  padding: 0.6rem;
+  padding: 0.65rem;
   font-weight: bold;
   margin: 0.4rem 0;
   cursor: pointer;
+  font-size: 0.95rem;
+  transition: opacity 0.15s;
 }
+
+.primary:active { opacity: 0.8; }
 
 .secondary {
   background: #3b82f6;
@@ -80,7 +98,11 @@ input, textarea, select {
   padding: 0.4rem 0.8rem;
   margin: 0.2rem;
   cursor: pointer;
+  font-size: 0.85rem;
+  transition: opacity 0.15s;
 }
+
+.secondary:active { opacity: 0.8; }
 
 .danger {
   background: #ef4444;
@@ -90,12 +112,55 @@ input, textarea, select {
   padding: 0.4rem 0.8rem;
   margin: 0.2rem;
   cursor: pointer;
+  font-size: 0.85rem;
 }
 
+/* ── MODE SELECTOR BAR ── */
+.mode-selector-bar {
+  display: flex;
+  align-items: center;
+  gap: 0.8rem;
+  background: #020617;
+  border-radius: 12px;
+  padding: 0.7rem 1rem;
+  margin-bottom: 1rem;
+}
+
+.mode-label {
+  font-size: 0.85rem;
+  color: #64748b;
+  white-space: nowrap;
+  font-weight: 600;
+}
+
+.mode-selector-bar select {
+  flex: 1;
+  margin: 0;
+  background: #1e293b;
+  font-weight: 600;
+  color: #e5e7eb;
+}
+
+/* ── CALENDAR ── */
 .calendar-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
+}
+
+.calendar-header h3 {
+  margin: 0;
+  text-transform: capitalize;
+}
+
+.calendar-header button {
+  background: #1e293b;
+  color: #e5e7eb;
+  border: none;
+  border-radius: 8px;
+  padding: 0.4rem 0.8rem;
+  cursor: pointer;
+  font-size: 1rem;
 }
 
 .calendar-grid {
@@ -112,33 +177,19 @@ input, textarea, select {
   text-align: center;
   font-size: 0.8rem;
   cursor: pointer;
+  transition: background 0.15s;
 }
 
-.day:hover {
-  background: #334155;
-}
+.day:hover { background: #334155; }
+.day.has { background: #4f46e5; }
+.day.today { background: #22c55e; font-weight: bold; color: #022c22; }
+.day.has.today { background: #16a34a; box-shadow: 0 0 0 2px #22c55e; }
+.day.selected { outline: 2px solid #facc15; }
 
-.day.has {
-  background: #4f46e5;
-}
-
-.day.today {
-  background: #22c55e;
-  font-weight: bold;
-}
-
-.day.has.today {
-  background: #16a34a;
-  box-shadow: 0 0 0 2px #22c55e;
-}
-
-.day.selected {
-  outline: 2px solid #facc15;
-}
-
+/* ── DAY MOVEMENTS ── */
 .day-movements {
   margin-top: 1rem;
-  border-top: 1px solid #334155;
+  border-top: 1px solid #1e293b;
   padding-top: 1rem;
 }
 
@@ -155,26 +206,25 @@ input, textarea, select {
 .movement-actions {
   display: flex;
   gap: 0.4rem;
+  flex-shrink: 0;
 }
 
+/* ── CHART ── */
 .chart-controls {
   display: flex;
   gap: 0.5rem;
   margin-bottom: 1rem;
 }
 
-.chart-controls select {
-  flex: 1;
-}
+.chart-controls select { flex: 1; }
 
+/* ── MODALS ── */
 .modal {
   display: none;
   position: fixed;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  background: rgba(0, 0, 0, 0.8);
+  top: 0; left: 0;
+  width: 100%; height: 100%;
+  background: rgba(0,0,0,0.85);
   z-index: 1000;
   justify-content: center;
   align-items: center;
@@ -183,11 +233,16 @@ input, textarea, select {
 .modal-content {
   background: #0f172a;
   padding: 1.5rem;
-  border-radius: 14px;
+  border-radius: 16px;
   width: 90%;
-  max-width: 500px;
-  max-height: 80%;
+  max-width: 480px;
+  max-height: 85vh;
   overflow-y: auto;
+  border: 1px solid #1e293b;
+}
+
+.modal-content h3 {
+  margin-top: 0;
 }
 
 .modal-movement-item {
@@ -197,24 +252,19 @@ input, textarea, select {
   border-radius: 8px;
 }
 
+/* ── DEBT ITEMS ── */
 .debt-item {
   border-left: 4px solid;
 }
 
-.debt-item[data-type="meDeben"] {
-  border-left-color: #3b82f6;
-}
-
-.debt-item[data-type="debo"] {
-  border-left-color: #ef4444;
-}
-
+/* ── INCOME DETAIL ── */
 .income-detail-item {
   background: #1e293b;
   padding: 0.8rem;
   margin: 0.5rem 0;
   border-radius: 8px;
 }
+
 .progress-bar-container {
   background: #334155;
   border-radius: 10px;
@@ -222,9 +272,70 @@ input, textarea, select {
   margin: 0.5rem 0;
   overflow: hidden;
 }
+
 .progress-bar-fill {
   height: 10px;
   background: #22c55e;
   border-radius: 10px;
   width: 0%;
+  transition: width 0.5s;
 }
+
+/* ── FIXED EXPENSES ── */
+.fixed-expenses-card {
+  border: 1px solid #1e293b;
+}
+
+/* ── INTEREST FIELDS ── */
+.interest-toggle {
+  margin: 0.6rem 0 0.2rem;
+  padding: 0.5rem 0.6rem;
+  background: #1e293b;
+  border-radius: 8px;
+}
+
+.interest-fields-wrap {
+  background: #0d1b2e;
+  border-radius: 10px;
+  padding: 0.8rem;
+  margin: 0.5rem 0;
+  border: 1px solid #1e3a5f;
+}
+
+.interest-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.6rem;
+}
+
+.interest-grid input,
+.interest-grid select {
+  margin: 0;
+}
+
+.field-label {
+  display: block;
+  font-size: 0.75rem;
+  color: #64748b;
+  margin-bottom: 0.2rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+/* ── PERIOD VIEW ── */
+#periodCalendarWrap .card {
+  animation: fadeIn 0.3s ease;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* ── DETAILS/SUMMARY ── */
+details > summary {
+  list-style: none;
+}
+details > summary::-webkit-details-marker { display: none; }
+details[open] > summary { margin-bottom: 0.5rem; }
