@@ -219,12 +219,141 @@
   </div>
 </div>
 
+<!-- ===================== PREDICCIONES ===================== -->
+<div id="predictions" class="view">
+
+  <!-- Header strip -->
+  <div class="pred-header-strip">
+    <div>
+      <div class="pred-header-title">🔮 Predicciones</div>
+      <div class="pred-header-sub">Simula tu futuro financiero</div>
+    </div>
+    <button class="pred-new-btn" onclick="openNewPredictionModal()">+ Nueva</button>
+  </div>
+
+  <!-- Saved predictions list -->
+  <div id="predictionsList"></div>
+
+  <!-- Empty state -->
+  <div id="predictionsEmpty" style="display:none;">
+    <div class="pred-empty">
+      <div class="pred-empty-icon">🔮</div>
+      <div class="pred-empty-title">Sin predicciones aún</div>
+      <div class="pred-empty-sub">Crea tu primera simulación financiera</div>
+      <button class="primary" onclick="openNewPredictionModal()" style="margin-top:1.2rem;max-width:260px;">Crear predicción</button>
+    </div>
+  </div>
+
+  <!-- Active prediction detail -->
+  <div id="predictionDetail" style="display:none;"></div>
+
+  <!-- Glosario financiero colombiano -->
+  <div class="card pred-glossary-card">
+    <div class="pred-glossary-header" onclick="toggleGlossary()">
+      <span>📚 Glosario Financiero · Ley Colombiana</span>
+      <span id="glossaryArrow">▼</span>
+    </div>
+    <div id="glossaryContent" style="display:none;">
+      <div class="glossary-item">
+        <div class="glossary-term">Amortización</div>
+        <div class="glossary-def">Proceso de pago gradual de una deuda mediante cuotas periódicas que incluyen capital e intereses. En Colombia, el sistema más usado es el <strong>Francés</strong> (cuota fija). Regulado por la Superintendencia Financiera de Colombia.</div>
+      </div>
+      <div class="glossary-item">
+        <div class="glossary-term">Sistema Francés (Cuota Fija)</div>
+        <div class="glossary-def">Cuota mensual constante. Al inicio se paga más interés y menos capital; con el tiempo la proporción se invierte. Es el estándar en créditos hipotecarios y de consumo en Colombia (Ley 546 de 1999 para vivienda).</div>
+      </div>
+      <div class="glossary-item">
+        <div class="glossary-term">Sistema Alemán (Capital Fijo)</div>
+        <div class="glossary-def">Se abona siempre la misma cantidad de capital. La cuota total disminuye con el tiempo porque los intereses se calculan sobre un saldo menor. Menos común en Colombia pero permitido.</div>
+      </div>
+      <div class="glossary-item">
+        <div class="glossary-term">Interés Simple</div>
+        <div class="glossary-def">Los intereses se calculan siempre sobre el capital inicial. Fórmula: <em>I = C × r × t</em>. Usado en préstamos informales y algunos créditos de corto plazo. El Código de Comercio colombiano lo regula en el Art. 884.</div>
+      </div>
+      <div class="glossary-item">
+        <div class="glossary-term">Interés Compuesto</div>
+        <div class="glossary-def">Los intereses se capitalizan: se suman al capital y generan nuevos intereses. Fórmula: <em>M = C(1+r)ⁿ</em>. Más frecuente en créditos formales y CDTs. La tasa efectiva anual (EA) siempre usa este sistema.</div>
+      </div>
+      <div class="glossary-item">
+        <div class="glossary-term">Tasa Efectiva Anual (EA)</div>
+        <div class="glossary-def">Tasa real que incluye capitalización. Obligatoria en Colombia para todos los productos financieros formales (Decreto 1454 de 1989). Permite comparar productos con diferentes períodos de pago.</div>
+      </div>
+      <div class="glossary-item">
+        <div class="glossary-term">Tasa Usura (Colombia)</div>
+        <div class="glossary-def">Tasa máxima legal que puede cobrar una entidad financiera. La Superintendencia Financiera la certifica mensualmente. Cobrar por encima es delito (Art. 305 Código Penal). Aprox. 1.5× el Interés Bancario Corriente (IBC).</div>
+      </div>
+      <div class="glossary-item">
+        <div class="glossary-term">Interés Bancario Corriente (IBC)</div>
+        <div class="glossary-def">Promedio ponderado de tasas de créditos de consumo del sistema bancario. Lo publica mensualmente la Superfinanciera. La tasa de usura es 1.5 veces este valor.</div>
+      </div>
+      <div class="glossary-item">
+        <div class="glossary-term">DTF</div>
+        <div class="glossary-def">Depósito a Término Fijo. Tasa promedio de captación a 90 días de bancos colombianos. Publicada semanalmente por el Banco de la República. Referencia para créditos hipotecarios y comerciales variables.</div>
+      </div>
+      <div class="glossary-item">
+        <div class="glossary-term">UVR (Unidad de Valor Real)</div>
+        <div class="glossary-def">Unidad de medida que refleja el poder adquisitivo basándose en la variación del IPC. Usada en créditos hipotecarios de vivienda VIS (Ley 546 de 1999). Su valor lo calcula diariamente el Banco de la República.</div>
+      </div>
+      <div class="glossary-item">
+        <div class="glossary-term">Ahorro Programado</div>
+        <div class="glossary-def">Depósito periódico en cuenta de ahorros con meta definida. En Colombia, las cooperativas y bancos ofrecen productos de ahorro programado. Los rendimientos en cuentas de ahorro están exentos de GMF hasta cierto límite (Ley 1819 de 2016).</div>
+      </div>
+      <div class="glossary-item">
+        <div class="glossary-term">GMF (4×1000)</div>
+        <div class="glossary-def">Gravamen a los Movimientos Financieros: 4 pesos por cada 1.000 pesos retirados de cuentas bancarias. Aplica a montos superiores a 350 UVT mensuales. Regulado en el Estatuto Tributario, Art. 871–881.</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ===================== PREDICTION NEW MODAL ===================== -->
+<div id="newPredictionModal" class="modal">
+  <div class="modal-content">
+    <h3 style="margin-bottom:0.3rem;">🔮 Nueva Predicción</h3>
+    <p style="color:#64748b;font-size:0.85rem;margin-bottom:1.2rem;">Elige el tipo de simulación</p>
+    <div class="pred-type-grid">
+      <button class="pred-type-btn" onclick="startPrediction('ahorro')">
+        <div class="pred-type-icon">🏦</div>
+        <div class="pred-type-name">Simulador de Ahorro</div>
+        <div class="pred-type-desc">¿Cuánto tendré en X meses?</div>
+      </button>
+      <button class="pred-type-btn" onclick="startPrediction('deuda')">
+        <div class="pred-type-icon">💳</div>
+        <div class="pred-type-name">Calculadora de Deuda</div>
+        <div class="pred-type-desc">Tabla de amortización y pagos</div>
+      </button>
+      <button class="pred-type-btn" onclick="startPrediction('meta')">
+        <div class="pred-type-icon">🎯</div>
+        <div class="pred-type-name">Meta Financiera</div>
+        <div class="pred-type-desc">¿Cuándo llego a mi objetivo?</div>
+      </button>
+      <button class="pred-type-btn" onclick="startPrediction('proyeccion')">
+        <div class="pred-type-icon">📊</div>
+        <div class="pred-type-name">Proyección Mensual</div>
+        <div class="pred-type-desc">Balance futuro mes a mes</div>
+      </button>
+      <button class="pred-type-btn" onclick="startPrediction('escenarios')">
+        <div class="pred-type-icon">⚖️</div>
+        <div class="pred-type-name">Comparar Escenarios</div>
+        <div class="pred-type-desc">¿Qué pasa si cambio algo?</div>
+      </button>
+    </div>
+    <button onclick="closeNewPredictionModal()" class="secondary" style="margin-top:1rem;width:100%;">Cancelar</button>
+  </div>
+</div>
+
+<!-- ===================== PREDICTION FORM MODAL ===================== -->
+<div id="predictionFormModal" class="modal">
+  <div class="modal-content" id="predictionFormContent"></div>
+</div>
+
 <!-- ===================== NAV ===================== -->
 <nav>
   <button class="active" onclick="showView('home', this)">Resumen</button>
   <button onclick="showView('calendar', this)">Calendario</button>
   <button onclick="showView('filter', this)">Filtros</button>
   <button onclick="showView('debts', this)">Deudas</button>
+  <button onclick="showView('predictions', this)">🔮</button>
 </nav>
 
 <script src="app.js"></script>

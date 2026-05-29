@@ -40,6 +40,7 @@ function parseColombianNumber(str) {
 
 function saveDB() {
   db.calendarMode = calendarMode;
+  if (!db.predictions) db.predictions = [];
   localStorage.setItem('financeDB', JSON.stringify(db));
   updateIncomeFunds();
   updateBalance();
@@ -1249,7 +1250,7 @@ function renderFiltered() {
 //  EXPORT / IMPORT
 // ============================================================
 function exportTXT() {
-  const exportData = { movements: db.movements, debts: db.debts, incomeFunds: db.incomeFunds, fortnights: db.fortnights, fixedExpenses: db.fixedExpenses };
+  const exportData = { movements: db.movements, debts: db.debts, incomeFunds: db.incomeFunds, fortnights: db.fortnights, fixedExpenses: db.fixedExpenses, predictions: db.predictions || [] };
   const a = document.createElement('a');
   a.href = URL.createObjectURL(new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' }));
   a.download = 'finanzas_completas.json';
@@ -1273,12 +1274,14 @@ function handleFileSelect(input) {
           if (importedData.incomeFunds) db.incomeFunds.push(...importedData.incomeFunds);
           if (importedData.fortnights) db.fortnights.push(...(importedData.fortnights || []));
           if (importedData.fixedExpenses) db.fixedExpenses.push(...(importedData.fixedExpenses || []));
+          if (importedData.predictions) db.predictions.push(...(importedData.predictions || []));
         } else {
           db.movements = importedData.movements;
           db.debts = importedData.debts || [];
           db.incomeFunds = importedData.incomeFunds || [];
           db.fortnights = importedData.fortnights || [];
           db.fixedExpenses = importedData.fixedExpenses || [];
+          db.predictions = importedData.predictions || [];
         }
         saveDB();
         alert(`Importación exitosa: ${importedData.movements.length} movimientos`);
@@ -1287,6 +1290,708 @@ function handleFileSelect(input) {
     input.value = '';
   };
   reader.readAsText(file);
+}
+
+// ============================================================
+//  PREDICCIONES — Data & State
+// ============================================================
+if (!db.predictions) db.predictions = [];
+
+let activePredId = null; // which prediction is open in detail view
+
+// ── Helpers ─────────────────────────────────────────────────
+function getMonthlyFixedExpenses() {
+  if (!db.fixedExpenses) return 0;
+  return db.fixedExpenses.reduce((sum, fe) => {
+    return sum + (fe.period === 'quincenal' ? fe.amount * 2 : fe.amount);
+  }, 0);
+}
+
+function getAvgMonthlyIncome() {
+  const incomeMov = db.movements.filter(m => m.type === 'ingreso');
+  if (incomeMov.length === 0) return 0;
+  const monthTotals = {};
+  incomeMov.forEach(m => {
+    const key = m.date.slice(0, 7);
+    monthTotals[key] = (monthTotals[key] || 0) + m.amount;
+  });
+  const vals = Object.values(monthTotals);
+  return vals.reduce((a, b) => a + b, 0) / vals.length;
+}
+
+function getAvgMonthlyExpenses() {
+  const egMov = db.movements.filter(m => m.type === 'egreso');
+  if (egMov.length === 0) return 0;
+  const monthTotals = {};
+  egMov.forEach(m => {
+    const key = m.date.slice(0, 7);
+    monthTotals[key] = (monthTotals[key] || 0) + m.amount;
+  });
+  const vals = Object.values(monthTotals);
+  return vals.reduce((a, b) => a + b, 0) / vals.length;
+}
+
+function getCurrentBalance() {
+  return db.movements.reduce((t, m) => m.type === 'ingreso' ? t + m.amount : t - m.amount, 0);
+}
+
+function predTypeLabel(type) {
+  return { ahorro: '🏦 Ahorro', deuda: '💳 Deuda', meta: '🎯 Meta', proyeccion: '📊 Proyección', escenarios: '⚖️ Escenarios' }[type] || type;
+}
+
+function predColorClass(type) {
+  return { ahorro: '#22c55e', deuda: '#ef4444', meta: '#f59e0b', proyeccion: '#3b82f6', escenarios: '#8b5cf6' }[type] || '#6366f1';
+}
+
+// ── Save / Render list ───────────────────────────────────────
+function savePrediction(pred) {
+  if (!db.predictions) db.predictions = [];
+  const idx = db.predictions.findIndex(p => p.id === pred.id);
+  if (idx !== -1) db.predictions[idx] = pred;
+  else db.predictions.push(pred);
+  localStorage.setItem('financeDB', JSON.stringify(db));
+  renderPredictionsList();
+}
+
+function deletePrediction(id) {
+  if (!confirm('¿Eliminar esta predicción?')) return;
+  db.predictions = db.predictions.filter(p => p.id !== id);
+  localStorage.setItem('financeDB', JSON.stringify(db));
+  if (activePredId === id) {
+    activePredId = null;
+    document.getElementById('predictionDetail').style.display = 'none';
+  }
+  renderPredictionsList();
+}
+
+function renderPredictionsList() {
+  const list = document.getElementById('predictionsList');
+  const empty = document.getElementById('predictionsEmpty');
+  if (!list) return;
+  const preds = db.predictions || [];
+  if (preds.length === 0) {
+    list.innerHTML = '';
+    if (empty) empty.style.display = 'block';
+    return;
+  }
+  if (empty) empty.style.display = 'none';
+  list.innerHTML = preds.map(p => {
+    const color = predColorClass(p.type);
+    const typeLabel = predTypeLabel(p.type);
+    const resultText = getPredCardResult(p);
+    return `
+      <div class="pred-card type-${p.type}" onclick="openPredictionDetail('${p.id}')">
+        <div class="pred-card-top">
+          <div>
+            <div class="pred-card-name">${p.name}</div>
+            <div class="pred-card-type">${typeLabel}</div>
+          </div>
+          <div class="pred-card-actions" onclick="event.stopPropagation()">
+            <button class="danger" onclick="deletePrediction('${p.id}')" style="padding:0.3rem 0.6rem;font-size:0.8rem;">🗑️</button>
+          </div>
+        </div>
+        <div class="pred-card-result" style="color:${color}">${resultText.main}</div>
+        <div class="pred-card-meta">${resultText.sub}</div>
+      </div>`;
+  }).join('');
+}
+
+function getPredCardResult(p) {
+  try {
+    switch (p.type) {
+      case 'ahorro': {
+        const r = calcAhorro(p.params);
+        return { main: `$${formatNumber(r.totalAhorro)}`, sub: `en ${p.params.meses} meses` };
+      }
+      case 'deuda': {
+        const r = calcDeuda(p.params);
+        return { main: `$${formatNumber(r.totalIntereses)}`, sub: `en intereses · ${p.params.plazo} cuotas` };
+      }
+      case 'meta': {
+        const r = calcMeta(p.params);
+        return { main: r.mesesNecesarios <= 0 ? 'Ya tienes suficiente' : `${r.mesesNecesarios} meses`, sub: `para $${formatNumber(p.params.meta)}` };
+      }
+      case 'proyeccion': {
+        const r = calcProyeccion(p.params);
+        const last = r.meses[r.meses.length - 1];
+        return { main: `$${formatNumber(last.balance)}`, sub: `balance en mes ${r.meses.length}` };
+      }
+      case 'escenarios': {
+        const rA = calcEscenario(p.params, 'A');
+        const rB = calcEscenario(p.params, 'B');
+        return { main: `A: $${formatNumber(rA.balance)} · B: $${formatNumber(rB.balance)}`, sub: `en ${p.params.meses} meses` };
+      }
+    }
+  } catch (e) {}
+  return { main: '—', sub: '' };
+}
+
+// ── Open / Close modals ──────────────────────────────────────
+function openNewPredictionModal() {
+  document.getElementById('newPredictionModal').style.display = 'flex';
+}
+function closeNewPredictionModal() {
+  document.getElementById('newPredictionModal').style.display = 'none';
+}
+function closePredictionFormModal() {
+  document.getElementById('predictionFormModal').style.display = 'none';
+}
+function toggleGlossary() {
+  const el = document.getElementById('glossaryContent');
+  const arrow = document.getElementById('glossaryArrow');
+  if (el.style.display === 'none') { el.style.display = 'block'; arrow.textContent = '▲'; }
+  else { el.style.display = 'none'; arrow.textContent = '▼'; }
+}
+
+// ── Start new prediction ─────────────────────────────────────
+function startPrediction(type) {
+  closeNewPredictionModal();
+  const avgIncome = getAvgMonthlyIncome();
+  const avgFixed = getMonthlyFixedExpenses();
+  const balance = getCurrentBalance();
+  const content = document.getElementById('predictionFormContent');
+
+  const fixedList = (db.fixedExpenses || []).map((fe, i) =>
+    `<label style="display:flex;align-items:center;gap:0.5rem;background:#0f172a;border-radius:6px;padding:0.4rem 0.6rem;margin:0.2rem 0;font-size:0.85rem;color:#94a3b8;">
+      <input type="checkbox" class="pred-fe-check" data-amount="${fe.amount}" data-period="${fe.period}" style="width:auto;margin:0;accent-color:#6366f1;" checked />
+      ${fe.title} — $${formatNumber(fe.amount)} (${fe.period})
+    </label>`).join('');
+  const hasFixed = (db.fixedExpenses || []).length > 0;
+
+  let html = '';
+  switch (type) {
+    case 'ahorro':
+      html = `
+        <h3 style="margin-bottom:0.2rem;">🏦 Simulador de Ahorro</h3>
+        <p style="color:#64748b;font-size:0.82rem;margin-bottom:1rem;">Proyecta cuánto acumularás con aportes periódicos.</p>
+        <label class="pred-form-label">Nombre de esta predicción</label>
+        <input id="pf-name" placeholder="Ej: Ahorro 2025" value="Mi ahorro" />
+        <label class="pred-form-label">Saldo inicial ($)</label>
+        <input type="text" id="pf-saldo" placeholder="Saldo actual" inputmode="decimal" value="${formatNumber(Math.max(0, balance))}" oninput="formatInputNumber(event)" />
+        <label class="pred-form-label">Ingreso mensual ($)</label>
+        <input type="text" id="pf-ingreso" placeholder="Ingreso mensual" inputmode="decimal" value="${formatNumber(Math.round(avgIncome))}" oninput="formatInputNumber(event)" />
+        ${hasFixed ? `<label class="pred-form-label" style="margin-top:0.6rem;">Gastos fijos a incluir</label><div style="background:#1e293b;border-radius:8px;padding:0.6rem;margin-bottom:0.4rem;">${fixedList}</div>` : ''}
+        <label class="pred-form-label">Gastos adicionales / mes ($)</label>
+        <input type="text" id="pf-gastos" placeholder="Otros gastos mensuales" inputmode="decimal" value="${formatNumber(Math.max(0, Math.round(getAvgMonthlyExpenses() - avgFixed)))}" oninput="formatInputNumber(event)" />
+        <label class="pred-form-label">Porcentaje a ahorrar del sobrante (%)</label>
+        <input type="number" id="pf-pct" placeholder="Ej: 30" value="30" min="0" max="100" />
+        <label class="pred-form-label">Plazo (meses)</label>
+        <input type="number" id="pf-meses" placeholder="Ej: 12" value="12" min="1" max="360" />
+        <div class="pred-toggle-row">
+          <input type="checkbox" id="pf-interes" style="width:auto;margin:0;accent-color:#6366f1;" />
+          <span>¿Incluir rendimiento de ahorro?</span>
+        </div>
+        <div id="pf-interes-wrap" style="display:none;">
+          <label class="pred-form-label">Tasa mensual (%)</label>
+          <input type="number" id="pf-tasa" placeholder="Ej: 0.5" value="0.5" step="0.01" min="0" />
+        </div>
+        <button class="primary" onclick="runPrediction('ahorro')" style="margin-top:0.8rem;">Calcular</button>
+        <button onclick="closePredictionFormModal()" class="secondary" style="margin-top:0.4rem;width:100%;">Cancelar</button>`;
+      break;
+
+    case 'deuda':
+      html = `
+        <h3 style="margin-bottom:0.2rem;">💳 Calculadora de Deuda</h3>
+        <p style="color:#64748b;font-size:0.82rem;margin-bottom:1rem;">Amortización con sistema francés y alemán según normativa colombiana.</p>
+        <label class="pred-form-label">Nombre de esta predicción</label>
+        <input id="pf-name" placeholder="Ej: Crédito carro" value="Mi crédito" />
+        <label class="pred-form-label">Capital ($)</label>
+        <input type="text" id="pf-capital" placeholder="Monto del préstamo" inputmode="decimal" oninput="formatInputNumber(event)" />
+        <label class="pred-form-label">Tasa de interés mensual (%)</label>
+        <input type="number" id="pf-tasa" placeholder="Ej: 1.8" value="1.8" step="0.01" min="0" />
+        <label class="pred-form-label">Plazo (meses)</label>
+        <input type="number" id="pf-plazo" placeholder="Ej: 24" value="24" min="1" max="360" />
+        <label class="pred-form-label">Sistema de amortización</label>
+        <select id="pf-sistema">
+          <option value="frances">Francés (cuota fija) — estándar Colombia</option>
+          <option value="aleman">Alemán (capital fijo)</option>
+        </select>
+        <label class="pred-form-label">Pago adicional mensual ($, opcional)</label>
+        <input type="text" id="pf-extra" placeholder="0" inputmode="decimal" value="0" oninput="formatInputNumber(event)" />
+        <button class="primary" onclick="runPrediction('deuda')" style="margin-top:0.8rem;">Calcular tabla</button>
+        <button onclick="closePredictionFormModal()" class="secondary" style="margin-top:0.4rem;width:100%;">Cancelar</button>`;
+      break;
+
+    case 'meta':
+      html = `
+        <h3 style="margin-bottom:0.2rem;">🎯 Meta Financiera</h3>
+        <p style="color:#64748b;font-size:0.82rem;margin-bottom:1rem;">¿Cuándo llegas a tu objetivo de ahorro?</p>
+        <label class="pred-form-label">Nombre de esta predicción</label>
+        <input id="pf-name" placeholder="Ej: Vacaciones" value="Mi meta" />
+        <label class="pred-form-label">Meta ($)</label>
+        <input type="text" id="pf-meta" placeholder="Cuánto quieres tener" inputmode="decimal" oninput="formatInputNumber(event)" />
+        <label class="pred-form-label">Saldo actual ($)</label>
+        <input type="text" id="pf-saldo" placeholder="Lo que tienes hoy" inputmode="decimal" value="${formatNumber(Math.max(0, balance))}" oninput="formatInputNumber(event)" />
+        <label class="pred-form-label">Ingreso mensual ($)</label>
+        <input type="text" id="pf-ingreso" placeholder="Ingreso mensual" inputmode="decimal" value="${formatNumber(Math.round(avgIncome))}" oninput="formatInputNumber(event)" />
+        ${hasFixed ? `<label class="pred-form-label" style="margin-top:0.6rem;">Gastos fijos a incluir</label><div style="background:#1e293b;border-radius:8px;padding:0.6rem;margin-bottom:0.4rem;">${fixedList}</div>` : ''}
+        <label class="pred-form-label">Gastos adicionales / mes ($)</label>
+        <input type="text" id="pf-gastos" placeholder="Otros gastos" inputmode="decimal" value="${formatNumber(Math.max(0, Math.round(getAvgMonthlyExpenses() - avgFixed)))}" oninput="formatInputNumber(event)" />
+        <label class="pred-form-label">% del sobrante que ahorrarás</label>
+        <input type="number" id="pf-pct" placeholder="Ej: 50" value="50" min="1" max="100" />
+        <button class="primary" onclick="runPrediction('meta')" style="margin-top:0.8rem;">Calcular</button>
+        <button onclick="closePredictionFormModal()" class="secondary" style="margin-top:0.4rem;width:100%;">Cancelar</button>`;
+      break;
+
+    case 'proyeccion':
+      html = `
+        <h3 style="margin-bottom:0.2rem;">📊 Proyección Mensual</h3>
+        <p style="color:#64748b;font-size:0.82rem;margin-bottom:1rem;">Simula tu balance mes a mes si nada cambia.</p>
+        <label class="pred-form-label">Nombre de esta predicción</label>
+        <input id="pf-name" placeholder="Ej: Proyección 2025" value="Proyección" />
+        <label class="pred-form-label">Saldo inicial ($)</label>
+        <input type="text" id="pf-saldo" placeholder="Saldo hoy" inputmode="decimal" value="${formatNumber(Math.max(0, balance))}" oninput="formatInputNumber(event)" />
+        <label class="pred-form-label">Ingreso mensual ($)</label>
+        <input type="text" id="pf-ingreso" placeholder="Ingreso mensual" inputmode="decimal" value="${formatNumber(Math.round(avgIncome))}" oninput="formatInputNumber(event)" />
+        ${hasFixed ? `<label class="pred-form-label" style="margin-top:0.6rem;">Gastos fijos a incluir</label><div style="background:#1e293b;border-radius:8px;padding:0.6rem;margin-bottom:0.4rem;">${fixedList}</div>` : ''}
+        <label class="pred-form-label">Gastos adicionales / mes ($)</label>
+        <input type="text" id="pf-gastos" placeholder="Otros gastos" inputmode="decimal" value="${formatNumber(Math.max(0, Math.round(getAvgMonthlyExpenses() - avgFixed)))}" oninput="formatInputNumber(event)" />
+        <label class="pred-form-label">Proyectar (meses)</label>
+        <input type="number" id="pf-meses" placeholder="Ej: 12" value="12" min="1" max="120" />
+        <button class="primary" onclick="runPrediction('proyeccion')" style="margin-top:0.8rem;">Proyectar</button>
+        <button onclick="closePredictionFormModal()" class="secondary" style="margin-top:0.4rem;width:100%;">Cancelar</button>`;
+      break;
+
+    case 'escenarios':
+      html = `
+        <h3 style="margin-bottom:0.2rem;">⚖️ Comparar Escenarios</h3>
+        <p style="color:#64748b;font-size:0.82rem;margin-bottom:1rem;">Compara dos situaciones financieras en paralelo.</p>
+        <label class="pred-form-label">Nombre de esta predicción</label>
+        <input id="pf-name" placeholder="Ej: ¿Aumento gastos?" value="Comparación" />
+        <label class="pred-form-label">Plazo a comparar (meses)</label>
+        <input type="number" id="pf-meses" value="12" min="1" max="120" />
+        <label class="pred-form-label">Saldo inicial compartido ($)</label>
+        <input type="text" id="pf-saldo" inputmode="decimal" value="${formatNumber(Math.max(0, balance))}" oninput="formatInputNumber(event)" />
+        <div style="background:#1e293b;border-radius:10px;padding:0.8rem;margin:0.6rem 0;">
+          <div style="color:#22c55e;font-weight:700;font-size:0.85rem;margin-bottom:0.5rem;">🟢 Escenario A</div>
+          <label class="pred-form-label">Ingreso mensual A ($)</label>
+          <input type="text" id="pf-ingresoA" inputmode="decimal" value="${formatNumber(Math.round(avgIncome))}" oninput="formatInputNumber(event)" />
+          <label class="pred-form-label">Gastos totales / mes A ($)</label>
+          <input type="text" id="pf-gastosA" inputmode="decimal" value="${formatNumber(Math.round(getAvgMonthlyExpenses()))}" oninput="formatInputNumber(event)" />
+        </div>
+        <div style="background:#1e293b;border-radius:10px;padding:0.8rem;margin:0.6rem 0;">
+          <div style="color:#8b5cf6;font-weight:700;font-size:0.85rem;margin-bottom:0.5rem;">🟣 Escenario B</div>
+          <label class="pred-form-label">Ingreso mensual B ($)</label>
+          <input type="text" id="pf-ingresoB" inputmode="decimal" value="${formatNumber(Math.round(avgIncome))}" oninput="formatInputNumber(event)" />
+          <label class="pred-form-label">Gastos totales / mes B ($)</label>
+          <input type="text" id="pf-gastosB" inputmode="decimal" value="${formatNumber(Math.round(getAvgMonthlyExpenses() * 1.2))}" oninput="formatInputNumber(event)" />
+        </div>
+        <button class="primary" onclick="runPrediction('escenarios')" style="margin-top:0.8rem;">Comparar</button>
+        <button onclick="closePredictionFormModal()" class="secondary" style="margin-top:0.4rem;width:100%;">Cancelar</button>`;
+      break;
+  }
+
+  content.innerHTML = html;
+  document.getElementById('predictionFormModal').style.display = 'flex';
+
+  // Toggle interest field for ahorro
+  const cb = document.getElementById('pf-interes');
+  if (cb) cb.addEventListener('change', () => {
+    document.getElementById('pf-interes-wrap').style.display = cb.checked ? 'block' : 'none';
+  });
+
+  setTimeout(initAutoFormat, 50);
+}
+
+// ── Calculations ─────────────────────────────────────────────
+function getCheckedFixedTotal() {
+  let total = 0;
+  document.querySelectorAll('.pred-fe-check:checked').forEach(cb => {
+    const amount = parseFloat(cb.dataset.amount) || 0;
+    const period = cb.dataset.period;
+    total += period === 'quincenal' ? amount * 2 : amount;
+  });
+  return total;
+}
+
+function calcAhorro(p) {
+  const { saldo, ingreso, gastosExtra, pctAhorro, meses, tasa, incluirTasa, fixedTotal } = p;
+  const totalGastos = fixedTotal + gastosExtra;
+  const sobrante = ingreso - totalGastos;
+  const aporteMensual = Math.max(0, sobrante * (pctAhorro / 100));
+  let balance = saldo;
+  const timeline = [];
+  const tasaMes = (tasa || 0) / 100;
+  for (let i = 1; i <= meses; i++) {
+    if (incluirTasa && tasaMes > 0) balance *= (1 + tasaMes);
+    balance += aporteMensual;
+    const d = new Date();
+    d.setMonth(d.getMonth() + i);
+    timeline.push({ mes: i, label: d.toLocaleDateString('es-CO', { month: 'short', year: '2-digit' }), balance });
+  }
+  return { totalAhorro: balance, aporteMensual, sobrante, timeline };
+}
+
+function calcDeuda(p) {
+  const { capital, tasa, plazo, sistema, extra } = p;
+  const r = tasa / 100;
+  const rows = [];
+  let saldo = capital;
+  let totalIntereses = 0;
+  let totalPagado = 0;
+  const cuotaFija = sistema === 'frances'
+    ? capital * (r * Math.pow(1 + r, plazo)) / (Math.pow(1 + r, plazo) - 1)
+    : null;
+  const capitalFijo = sistema === 'aleman' ? capital / plazo : null;
+
+  for (let i = 1; i <= plazo; i++) {
+    if (saldo <= 0) break;
+    const interes = saldo * r;
+    let cuota, capPagado;
+    if (sistema === 'frances') {
+      cuota = cuotaFija + (extra || 0);
+      capPagado = Math.min(cuota - interes, saldo);
+    } else {
+      capPagado = Math.min(capitalFijo + (extra || 0), saldo);
+      cuota = capPagado + interes;
+    }
+    saldo -= capPagado;
+    if (saldo < 0) saldo = 0;
+    totalIntereses += interes;
+    totalPagado += cuota;
+    const d = new Date();
+    d.setMonth(d.getMonth() + i);
+    rows.push({ mes: i, label: d.toLocaleDateString('es-CO', { month: 'short', year: '2-digit' }), cuota, interes, capital: capPagado, saldo });
+    if (saldo <= 0.01) break;
+  }
+  return { rows, totalIntereses, totalPagado, cuotaFija: cuotaFija || (capitalFijo + capital * r) };
+}
+
+function calcMeta(p) {
+  const { meta, saldo, ingreso, gastosExtra, pctAhorro, fixedTotal } = p;
+  const totalGastos = fixedTotal + gastosExtra;
+  const sobrante = ingreso - totalGastos;
+  const aporteMensual = Math.max(0, sobrante * (pctAhorro / 100));
+  if (aporteMensual <= 0) return { mesesNecesarios: -1, aporteMensual, sobrante, pctNecesario: null };
+  let balance = saldo;
+  let meses = 0;
+  const MAX = 600;
+  while (balance < meta && meses < MAX) { balance += aporteMensual; meses++; }
+  const pctNecesario = sobrante > 0 ? Math.ceil(((meta - saldo) / sobrante) * 100 / meses) : null;
+  const fechaMeta = new Date();
+  fechaMeta.setMonth(fechaMeta.getMonth() + meses);
+  return { mesesNecesarios: meses, aporteMensual, sobrante, pctNecesario, fechaMeta, balanceFinal: balance };
+}
+
+function calcProyeccion(p) {
+  const { saldo, ingreso, gastosExtra, meses, fixedTotal } = p;
+  const totalGastos = fixedTotal + gastosExtra;
+  let balance = saldo;
+  const timeline = [];
+  for (let i = 1; i <= meses; i++) {
+    balance += ingreso - totalGastos;
+    const d = new Date();
+    d.setMonth(d.getMonth() + i);
+    timeline.push({ mes: i, label: d.toLocaleDateString('es-CO', { month: 'short', year: '2-digit' }), balance, ingreso, gastos: totalGastos });
+  }
+  return { meses: timeline };
+}
+
+function calcEscenario(p, which) {
+  const ingreso = which === 'A' ? p.ingresoA : p.ingresoB;
+  const gastos = which === 'A' ? p.gastosA : p.gastosB;
+  let balance = p.saldo;
+  const timeline = [];
+  for (let i = 1; i <= p.meses; i++) {
+    balance += ingreso - gastos;
+    const d = new Date();
+    d.setMonth(d.getMonth() + i);
+    timeline.push({ mes: i, label: d.toLocaleDateString('es-CO', { month: 'short', year: '2-digit' }), balance });
+  }
+  return { balance, timeline };
+}
+
+// ── Run & Save ───────────────────────────────────────────────
+function runPrediction(type) {
+  const name = (document.getElementById('pf-name')?.value || type).trim();
+  let params = {};
+  try {
+    switch (type) {
+      case 'ahorro':
+        params = {
+          saldo: parseColombianNumber(document.getElementById('pf-saldo').value),
+          ingreso: parseColombianNumber(document.getElementById('pf-ingreso').value),
+          fixedTotal: getCheckedFixedTotal(),
+          gastosExtra: parseColombianNumber(document.getElementById('pf-gastos').value),
+          pctAhorro: parseFloat(document.getElementById('pf-pct').value) || 0,
+          meses: parseInt(document.getElementById('pf-meses').value) || 12,
+          incluirTasa: document.getElementById('pf-interes')?.checked || false,
+          tasa: parseFloat(document.getElementById('pf-tasa')?.value) || 0
+        }; break;
+      case 'deuda':
+        params = {
+          capital: parseColombianNumber(document.getElementById('pf-capital').value),
+          tasa: parseFloat(document.getElementById('pf-tasa').value) || 0,
+          plazo: parseInt(document.getElementById('pf-plazo').value) || 12,
+          sistema: document.getElementById('pf-sistema').value,
+          extra: parseColombianNumber(document.getElementById('pf-extra').value)
+        };
+        if (!params.capital) { alert('Ingresa el capital'); return; }
+        break;
+      case 'meta':
+        params = {
+          meta: parseColombianNumber(document.getElementById('pf-meta').value),
+          saldo: parseColombianNumber(document.getElementById('pf-saldo').value),
+          ingreso: parseColombianNumber(document.getElementById('pf-ingreso').value),
+          fixedTotal: getCheckedFixedTotal(),
+          gastosExtra: parseColombianNumber(document.getElementById('pf-gastos').value),
+          pctAhorro: parseFloat(document.getElementById('pf-pct').value) || 50
+        };
+        if (!params.meta) { alert('Ingresa la meta'); return; }
+        break;
+      case 'proyeccion':
+        params = {
+          saldo: parseColombianNumber(document.getElementById('pf-saldo').value),
+          ingreso: parseColombianNumber(document.getElementById('pf-ingreso').value),
+          fixedTotal: getCheckedFixedTotal(),
+          gastosExtra: parseColombianNumber(document.getElementById('pf-gastos').value),
+          meses: parseInt(document.getElementById('pf-meses').value) || 12
+        }; break;
+      case 'escenarios':
+        params = {
+          meses: parseInt(document.getElementById('pf-meses').value) || 12,
+          saldo: parseColombianNumber(document.getElementById('pf-saldo').value),
+          ingresoA: parseColombianNumber(document.getElementById('pf-ingresoA').value),
+          gastosA: parseColombianNumber(document.getElementById('pf-gastosA').value),
+          ingresoB: parseColombianNumber(document.getElementById('pf-ingresoB').value),
+          gastosB: parseColombianNumber(document.getElementById('pf-gastosB').value)
+        }; break;
+    }
+  } catch (e) { alert('Error en los datos'); return; }
+
+  const pred = { id: String(Date.now()), type, name, params, createdAt: new Date().toISOString() };
+  savePrediction(pred);
+  closePredictionFormModal();
+  openPredictionDetail(pred.id);
+}
+
+// ── Detail view ──────────────────────────────────────────────
+function openPredictionDetail(id) {
+  activePredId = id;
+  const pred = (db.predictions || []).find(p => p.id === id);
+  if (!pred) return;
+  const detail = document.getElementById('predictionDetail');
+  detail.style.display = 'block';
+  detail.innerHTML = buildDetailHTML(pred);
+  detail.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+function buildDetailHTML(pred) {
+  const color = predColorClass(pred.type);
+  let body = '';
+  try {
+    switch (pred.type) {
+      case 'ahorro': body = buildAhorroDetail(pred); break;
+      case 'deuda':  body = buildDeudaDetail(pred);  break;
+      case 'meta':   body = buildMetaDetail(pred);   break;
+      case 'proyeccion': body = buildProyeccionDetail(pred); break;
+      case 'escenarios': body = buildEscenariosDetail(pred); break;
+    }
+  } catch(e) { body = `<p style="color:#ef4444;">Error al calcular: ${e.message}</p>`; }
+
+  return `
+    <button class="pred-back-btn" onclick="document.getElementById('predictionDetail').style.display='none';activePredId=null;">◀ Volver a predicciones</button>
+    <div class="card" style="border:1px solid ${color}33;">
+      <div style="display:flex;align-items:center;gap:0.6rem;margin-bottom:0.8rem;">
+        <div style="width:8px;height:8px;border-radius:50%;background:${color};flex-shrink:0;"></div>
+        <div>
+          <div style="font-size:1.1rem;font-weight:800;color:#f1f5f9;">${pred.name}</div>
+          <div style="font-size:0.75rem;color:#64748b;">${predTypeLabel(pred.type)} · ${new Date(pred.createdAt).toLocaleDateString('es-CO')}</div>
+        </div>
+      </div>
+      ${body}
+    </div>`;
+}
+
+function buildAhorroDetail(pred) {
+  const p = pred.params;
+  const r = calcAhorro(p);
+  const pct = Math.min(100, ((r.totalAhorro - p.saldo) / r.totalAhorro * 100)).toFixed(1);
+  const timeline = r.timeline.filter((_, i) => i % Math.max(1, Math.floor(r.timeline.length / 8)) === 0 || i === r.timeline.length - 1);
+  return `
+    <div class="pred-result-box">
+      <div class="pred-result-label">Total acumulado en ${p.meses} meses</div>
+      <div class="pred-result-value" style="color:#22c55e;">$${formatNumber(Math.round(r.totalAhorro))}</div>
+      <div class="pred-result-sub">empezando con $${formatNumber(p.saldo)}</div>
+    </div>
+    <div class="pred-chips">
+      <div class="pred-chip">Aporte/mes <strong>$${formatNumber(Math.round(r.aporteMensual))}</strong></div>
+      <div class="pred-chip">Sobrante mensual <strong>$${formatNumber(Math.round(r.sobrante))}</strong></div>
+      <div class="pred-chip">Gastos fijos <strong>$${formatNumber(p.fixedTotal)}</strong></div>
+      <div class="pred-chip">% a ahorrar <strong>${p.pctAhorro}%</strong></div>
+      ${p.incluirTasa ? `<div class="pred-chip">Tasa mensual <strong>${p.tasa}%</strong></div>` : ''}
+    </div>
+    <div class="pred-progress-wrap"><div class="pred-progress-fill" style="width:${pct}%;background:#22c55e;"></div></div>
+    <div style="font-size:0.78rem;color:#64748b;margin-bottom:0.8rem;">${pct}% son nuevos aportes</div>
+    <div style="font-size:0.82rem;font-weight:700;color:#94a3b8;margin-bottom:0.5rem;">Evolución</div>
+    <div class="pred-timeline">
+      ${timeline.map(t => `
+        <div class="pred-timeline-row">
+          <span class="pred-timeline-month">${t.label}</span>
+          <span class="pred-timeline-amount" style="color:#22c55e;">$${formatNumber(Math.round(t.balance))}</span>
+        </div>`).join('')}
+    </div>`;
+}
+
+function buildDeudaDetail(pred) {
+  const p = pred.params;
+  const r = calcDeuda(p);
+  const showRows = r.rows.slice(0, 24);
+  const extraInfo = p.extra > 0
+    ? `<div class="pred-chip">Pago extra/mes <strong>$${formatNumber(p.extra)}</strong></div><div class="pred-chip">Cuotas reducidas <strong>${r.rows.length} de ${p.plazo}</strong></div>`
+    : '';
+  return `
+    <div class="pred-result-box">
+      <div class="pred-result-label">Total de intereses a pagar</div>
+      <div class="pred-result-value" style="color:#ef4444;">$${formatNumber(Math.round(r.totalIntereses))}</div>
+      <div class="pred-result-sub">sobre un capital de $${formatNumber(p.capital)}</div>
+    </div>
+    <div class="pred-chips">
+      <div class="pred-chip">Cuota inicial <strong>$${formatNumber(Math.round(r.rows[0]?.cuota || 0))}</strong></div>
+      <div class="pred-chip">Total pagado <strong>$${formatNumber(Math.round(r.totalPagado))}</strong></div>
+      <div class="pred-chip">Sistema <strong>${p.sistema === 'frances' ? 'Francés' : 'Alemán'}</strong></div>
+      <div class="pred-chip">Tasa mensual <strong>${p.tasa}%</strong></div>
+      ${extraInfo}
+    </div>
+    <div style="font-size:0.82rem;color:#64748b;margin-bottom:0.5rem;">💡 En Colombia, la tasa máxima legal (usura) es certificada mensualmente por la Superfinanciera. Verifica que tu tasa esté dentro del límite.</div>
+    <div class="amort-table-wrap">
+      <table class="amort-table">
+        <thead><tr>
+          <th>#</th><th>Fecha</th><th>Cuota</th>
+          <th class="amort-capital">Capital</th>
+          <th class="amort-interest">Interés</th>
+          <th>Saldo</th>
+        </tr></thead>
+        <tbody>
+          ${showRows.map((row, i) => `
+            <tr class="${i % 2 === 1 ? 'amort-highlight' : ''}">
+              <td>${row.mes}</td>
+              <td>${row.label}</td>
+              <td>$${formatNumber(Math.round(row.cuota))}</td>
+              <td class="amort-capital">$${formatNumber(Math.round(row.capital))}</td>
+              <td class="amort-interest">$${formatNumber(Math.round(row.interes))}</td>
+              <td>$${formatNumber(Math.round(row.saldo))}</td>
+            </tr>`).join('')}
+          ${r.rows.length > 24 ? `<tr><td colspan="6" style="text-align:center;color:#64748b;padding:0.8rem;">... y ${r.rows.length - 24} cuotas más</td></tr>` : ''}
+        </tbody>
+      </table>
+    </div>`;
+}
+
+function buildMetaDetail(pred) {
+  const p = pred.params;
+  const r = calcMeta(p);
+  if (r.mesesNecesarios < 0) {
+    return `
+      <div class="pred-result-box">
+        <div class="pred-result-label">Resultado</div>
+        <div class="pred-result-value" style="color:#f59e0b;">Sin ahorro posible</div>
+        <div class="pred-result-sub">Tus gastos superan tu ingreso</div>
+      </div>
+      <div class="pred-chips">
+        <div class="pred-chip">Sobrante <strong style="color:#ef4444;">$${formatNumber(Math.round(r.sobrante))}</strong></div>
+      </div>`;
+  }
+  const pctAlcanzado = Math.min(100, (p.saldo / p.meta * 100)).toFixed(1);
+  const fechaStr = r.fechaMeta ? r.fechaMeta.toLocaleDateString('es-CO', { month: 'long', year: 'numeric' }) : '';
+  return `
+    <div class="pred-result-box">
+      <div class="pred-result-label">Tiempo para alcanzar tu meta</div>
+      <div class="pred-result-value" style="color:#f59e0b;">${r.mesesNecesarios} ${r.mesesNecesarios === 1 ? 'mes' : 'meses'}</div>
+      <div class="pred-result-sub">Llegas en ${fechaStr}</div>
+    </div>
+    <div class="pred-chips">
+      <div class="pred-chip">Meta <strong>$${formatNumber(p.meta)}</strong></div>
+      <div class="pred-chip">Aporte/mes <strong>$${formatNumber(Math.round(r.aporteMensual))}</strong></div>
+      <div class="pred-chip">Sobrante <strong>$${formatNumber(Math.round(r.sobrante))}</strong></div>
+      <div class="pred-chip">% del sobrante <strong>${p.pctAhorro}%</strong></div>
+    </div>
+    <div style="font-size:0.78rem;color:#94a3b8;margin-bottom:0.3rem;">Progreso actual hacia la meta</div>
+    <div class="pred-progress-wrap"><div class="pred-progress-fill" style="width:${pctAlcanzado}%;background:#f59e0b;"></div></div>
+    <div style="font-size:0.78rem;color:#64748b;margin-bottom:0.8rem;">${pctAlcanzado}% completado ($${formatNumber(p.saldo)} de $${formatNumber(p.meta)})</div>`;
+}
+
+function buildProyeccionDetail(pred) {
+  const p = pred.params;
+  const r = calcProyeccion(p);
+  const hasNegative = r.meses.some(m => m.balance < 0);
+  const last = r.meses[r.meses.length - 1];
+  const color = last.balance >= 0 ? '#3b82f6' : '#ef4444';
+  return `
+    <div class="pred-result-box">
+      <div class="pred-result-label">Balance al mes ${p.meses}</div>
+      <div class="pred-result-value" style="color:${color};">$${formatNumber(Math.round(last.balance))}</div>
+      <div class="pred-result-sub">partiendo de $${formatNumber(p.saldo)}</div>
+    </div>
+    <div class="pred-chips">
+      <div class="pred-chip">Ingreso/mes <strong>$${formatNumber(p.ingreso)}</strong></div>
+      <div class="pred-chip">Gastos/mes <strong>$${formatNumber(p.fixedTotal + p.gastosExtra)}</strong></div>
+      <div class="pred-chip">Sobrante <strong style="color:${(p.ingreso - p.fixedTotal - p.gastosExtra) >= 0 ? '#22c55e' : '#ef4444'};">$${formatNumber(p.ingreso - p.fixedTotal - p.gastosExtra)}</strong></div>
+    </div>
+    ${hasNegative ? `<div style="background:#1c0a0a;border:1px solid #7f1d1d;border-radius:8px;padding:0.7rem;font-size:0.82rem;color:#fca5a5;margin-bottom:0.8rem;">⚠️ Tu balance entra en negativo en algún mes. Considera reducir gastos o aumentar ingresos.</div>` : ''}
+    <div class="pred-timeline">
+      ${r.meses.map(m => {
+        const neg = m.balance < 0;
+        return `<div class="pred-timeline-row ${neg ? 'negative' : ''}">
+          <span class="pred-timeline-month">${m.label}</span>
+          <span class="pred-timeline-amount" style="color:${neg ? '#ef4444' : '#3b82f6'};">$${formatNumber(Math.round(m.balance))}</span>
+        </div>`;
+      }).join('')}
+    </div>`;
+}
+
+function buildEscenariosDetail(pred) {
+  const p = pred.params;
+  const rA = calcEscenario(p, 'A');
+  const rB = calcEscenario(p, 'B');
+  const diff = rA.balance - rB.balance;
+  const winner = diff > 0 ? 'A' : diff < 0 ? 'B' : 'Empate';
+  return `
+    <div class="pred-chips" style="margin-bottom:0.5rem;">
+      <div class="pred-chip">Plazo <strong>${p.meses} meses</strong></div>
+      <div class="pred-chip">Saldo inicial <strong>$${formatNumber(p.saldo)}</strong></div>
+    </div>
+    <div class="scenario-cols">
+      <div class="scenario-col">
+        <div class="scenario-col-label a">🟢 Escenario A</div>
+        <div class="scenario-col-value" style="color:#22c55e;">$${formatNumber(Math.round(rA.balance))}</div>
+        <div style="font-size:0.75rem;color:#64748b;margin-top:0.3rem;">
+          Ingreso: $${formatNumber(p.ingresoA)}<br>
+          Gastos: $${formatNumber(p.gastosA)}<br>
+          Sobrante/mes: $${formatNumber(p.ingresoA - p.gastosA)}
+        </div>
+      </div>
+      <div class="scenario-col">
+        <div class="scenario-col-label b">🟣 Escenario B</div>
+        <div class="scenario-col-value" style="color:#8b5cf6;">$${formatNumber(Math.round(rB.balance))}</div>
+        <div style="font-size:0.75rem;color:#64748b;margin-top:0.3rem;">
+          Ingreso: $${formatNumber(p.ingresoB)}<br>
+          Gastos: $${formatNumber(p.gastosB)}<br>
+          Sobrante/mes: $${formatNumber(p.ingresoB - p.gastosB)}
+        </div>
+      </div>
+    </div>
+    ${winner !== 'Empate' ? `
+    <div style="background:#1e293b;border-radius:10px;padding:0.8rem;text-align:center;margin:0.6rem 0;">
+      <div style="font-size:0.78rem;color:#64748b;">Escenario ganador (más ahorro)</div>
+      <div style="font-size:1.2rem;font-weight:800;color:${winner === 'A' ? '#22c55e' : '#8b5cf6'};">
+        ${winner === 'A' ? '🟢 A gana' : '🟣 B gana'} por $${formatNumber(Math.abs(Math.round(diff)))}
+      </div>
+    </div>` : ''}
+    <div style="font-size:0.82rem;font-weight:700;color:#94a3b8;margin:0.8rem 0 0.4rem;">Evolución comparada</div>
+    <div class="pred-timeline">
+      ${rA.timeline.filter((_, i) => i % Math.max(1, Math.floor(rA.timeline.length / 8)) === 0 || i === rA.timeline.length - 1).map((mA, i) => {
+        const mB = rB.timeline[mA.mes - 1];
+        return `<div class="pred-timeline-row">
+          <span class="pred-timeline-month">${mA.label}</span>
+          <span style="font-size:0.78rem;">
+            <span style="color:#22c55e;">A: $${formatNumber(Math.round(mA.balance))}</span>
+            &nbsp;·&nbsp;
+            <span style="color:#8b5cf6;">B: $${formatNumber(Math.round(mB?.balance || 0))}</span>
+          </span>
+        </div>`;
+      }).join('')}
+    </div>`;
 }
 
 // ============================================================
@@ -1300,6 +2005,9 @@ function showView(id, btn) {
   if (id === 'calendar') {
     renderCalendarSection();
     toggleIncomeSelect();
+  }
+  if (id === 'predictions') {
+    renderPredictionsList();
   }
   setTimeout(initAutoFormat, 10);
 }
@@ -1317,6 +2025,7 @@ function renderPeriodSummary() {
 document.addEventListener('DOMContentLoaded', function() {
   if (!db.fortnights) db.fortnights = [];
   if (!db.fixedExpenses) db.fixedExpenses = [];
+  if (!db.predictions) db.predictions = [];
 
   // Set mode selector
   const modeSelect = document.getElementById('calendarModeSelect');
@@ -1329,6 +2038,7 @@ document.addEventListener('DOMContentLoaded', function() {
   renderChart();
   renderSummaryCards();
   populateMonthSelect();
+  renderPredictionsList();
 
   const today = new Date().toISOString().slice(0, 10);
   const movDate = document.getElementById('movDate');
@@ -1343,6 +2053,8 @@ document.addEventListener('DOMContentLoaded', function() {
   document.getElementById('incomeDetailModal').addEventListener('click', function(e) { if (e.target === this) closeIncomeModal(); });
   document.getElementById('startPeriodModal').addEventListener('click', function(e) { if (e.target === this) closeStartPeriodModal(); });
   document.getElementById('fixedExpenseModal').addEventListener('click', function(e) { if (e.target === this) closeFixedExpenseModal(); });
+  document.getElementById('newPredictionModal').addEventListener('click', function(e) { if (e.target === this) closeNewPredictionModal(); });
+  document.getElementById('predictionFormModal').addEventListener('click', function(e) { if (e.target === this) closePredictionFormModal(); });
 
   if ('serviceWorker' in navigator) navigator.serviceWorker.register('/Finanzas_basicas/sw.js');
 });

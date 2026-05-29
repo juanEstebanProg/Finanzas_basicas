@@ -339,3 +339,335 @@ details > summary {
 }
 details > summary::-webkit-details-marker { display: none; }
 details[open] > summary { margin-bottom: 0.5rem; }
+
+/* ══════════════════════════════════════════
+   PREDICCIONES
+══════════════════════════════════════════ */
+
+/* Header strip */
+.pred-header-strip {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: linear-gradient(135deg, #0f172a 0%, #1e1b4b 100%);
+  border: 1px solid #312e81;
+  border-radius: 16px;
+  padding: 1.2rem 1rem;
+  margin-bottom: 1rem;
+}
+.pred-header-title {
+  font-size: 1.3rem;
+  font-weight: 800;
+  color: #e0e7ff;
+  letter-spacing: -0.02em;
+}
+.pred-header-sub {
+  font-size: 0.8rem;
+  color: #6366f1;
+  margin-top: 0.15rem;
+}
+.pred-new-btn {
+  background: #6366f1;
+  color: white;
+  border: none;
+  border-radius: 10px;
+  padding: 0.6rem 1rem;
+  font-weight: 700;
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: opacity 0.15s;
+  white-space: nowrap;
+}
+.pred-new-btn:active { opacity: 0.8; }
+
+/* Empty state */
+.pred-empty {
+  text-align: center;
+  padding: 3rem 1rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+.pred-empty-icon { font-size: 3rem; margin-bottom: 0.8rem; }
+.pred-empty-title { font-size: 1.1rem; font-weight: 700; color: #e2e8f0; }
+.pred-empty-sub { font-size: 0.85rem; color: #64748b; margin-top: 0.3rem; }
+
+/* Saved predictions list cards */
+.pred-card {
+  background: #020617;
+  border: 1px solid #1e293b;
+  border-radius: 14px;
+  padding: 1rem;
+  margin-bottom: 0.8rem;
+  cursor: pointer;
+  transition: border-color 0.2s, background 0.2s;
+  position: relative;
+  overflow: hidden;
+}
+.pred-card::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0;
+  width: 4px; height: 100%;
+  border-radius: 4px 0 0 4px;
+}
+.pred-card.type-ahorro::before { background: #22c55e; }
+.pred-card.type-deuda::before { background: #ef4444; }
+.pred-card.type-meta::before { background: #f59e0b; }
+.pred-card.type-proyeccion::before { background: #3b82f6; }
+.pred-card.type-escenarios::before { background: #8b5cf6; }
+
+.pred-card:hover { border-color: #334155; background: #0a1628; }
+.pred-card-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+}
+.pred-card-name {
+  font-size: 1rem;
+  font-weight: 700;
+  color: #f1f5f9;
+}
+.pred-card-type {
+  font-size: 0.75rem;
+  color: #94a3b8;
+  margin-top: 0.2rem;
+}
+.pred-card-result {
+  font-size: 1.4rem;
+  font-weight: 800;
+  margin-top: 0.6rem;
+}
+.pred-card-meta {
+  font-size: 0.78rem;
+  color: #64748b;
+  margin-top: 0.3rem;
+}
+.pred-card-actions {
+  display: flex;
+  gap: 0.4rem;
+}
+
+/* New prediction type grid */
+.pred-type-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.7rem;
+}
+.pred-type-btn {
+  background: #0f172a;
+  border: 1px solid #1e293b;
+  border-radius: 12px;
+  padding: 1rem 0.8rem;
+  text-align: left;
+  cursor: pointer;
+  transition: border-color 0.2s, background 0.2s;
+  color: #e5e7eb;
+}
+.pred-type-btn:hover { border-color: #6366f1; background: #1e1b4b; }
+.pred-type-icon { font-size: 1.6rem; margin-bottom: 0.4rem; }
+.pred-type-name { font-size: 0.85rem; font-weight: 700; color: #f1f5f9; }
+.pred-type-desc { font-size: 0.72rem; color: #64748b; margin-top: 0.2rem; }
+
+/* Prediction form */
+.pred-form-section {
+  margin-bottom: 1rem;
+}
+.pred-form-label {
+  display: block;
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: #64748b;
+  margin-bottom: 0.3rem;
+}
+.pred-toggle-row {
+  display: flex;
+  align-items: center;
+  gap: 0.8rem;
+  background: #1e293b;
+  border-radius: 8px;
+  padding: 0.6rem 0.8rem;
+  margin: 0.4rem 0;
+  color: #94a3b8;
+  font-size: 0.9rem;
+}
+.pred-toggle-row input[type=checkbox] { width: auto; margin: 0; accent-color: #6366f1; }
+
+/* Result display */
+.pred-result-box {
+  background: linear-gradient(135deg, #0f172a 0%, #1e1b4b 100%);
+  border: 1px solid #312e81;
+  border-radius: 16px;
+  padding: 1.4rem 1.2rem;
+  margin: 1rem 0;
+  text-align: center;
+}
+.pred-result-label { font-size: 0.8rem; color: #6366f1; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; }
+.pred-result-value { font-size: 2.2rem; font-weight: 900; color: #e0e7ff; line-height: 1.1; margin: 0.4rem 0; }
+.pred-result-sub { font-size: 0.85rem; color: #94a3b8; }
+
+/* Info chips */
+.pred-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin: 0.8rem 0;
+}
+.pred-chip {
+  background: #1e293b;
+  border-radius: 8px;
+  padding: 0.45rem 0.8rem;
+  font-size: 0.8rem;
+  color: #94a3b8;
+}
+.pred-chip strong { color: #e2e8f0; }
+
+/* Amortization table */
+.amort-table-wrap {
+  overflow-x: auto;
+  margin-top: 1rem;
+  border-radius: 10px;
+  background: #0f172a;
+  border: 1px solid #1e293b;
+}
+.amort-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.78rem;
+}
+.amort-table th {
+  background: #1e293b;
+  color: #94a3b8;
+  padding: 0.5rem 0.6rem;
+  text-align: right;
+  font-weight: 700;
+  white-space: nowrap;
+}
+.amort-table th:first-child { text-align: center; }
+.amort-table td {
+  padding: 0.45rem 0.6rem;
+  text-align: right;
+  border-top: 1px solid #1e293b;
+  color: #e2e8f0;
+}
+.amort-table td:first-child { text-align: center; color: #64748b; }
+.amort-table tr.amort-highlight { background: #1a2744; }
+.amort-table .amort-capital { color: #22c55e; }
+.amort-table .amort-interest { color: #ef4444; }
+
+/* Scenario comparison */
+.scenario-cols {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.7rem;
+  margin: 0.8rem 0;
+}
+.scenario-col {
+  background: #0f172a;
+  border-radius: 12px;
+  padding: 1rem;
+  border: 1px solid #1e293b;
+}
+.scenario-col-label {
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: 0.5rem;
+}
+.scenario-col-label.a { color: #22c55e; }
+.scenario-col-label.b { color: #8b5cf6; }
+.scenario-col-value {
+  font-size: 1.4rem;
+  font-weight: 800;
+  color: #f1f5f9;
+}
+
+/* Progress bar for predictions */
+.pred-progress-wrap {
+  background: #1e293b;
+  border-radius: 999px;
+  height: 10px;
+  overflow: hidden;
+  margin: 0.8rem 0;
+}
+.pred-progress-fill {
+  height: 100%;
+  border-radius: 999px;
+  transition: width 0.6s;
+}
+
+/* Timeline month rows */
+.pred-timeline {
+  margin-top: 0.8rem;
+}
+.pred-timeline-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.5rem 0.7rem;
+  border-radius: 8px;
+  margin-bottom: 0.3rem;
+  font-size: 0.82rem;
+  background: #0f172a;
+  border: 1px solid #1e293b;
+}
+.pred-timeline-row.negative { border-color: #7f1d1d; background: #1c0a0a; }
+.pred-timeline-row.goal-reached { border-color: #14532d; background: #0a1c10; }
+.pred-timeline-month { color: #94a3b8; }
+.pred-timeline-amount { font-weight: 700; }
+
+/* Detail back button */
+.pred-back-btn {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: #1e293b;
+  border: none;
+  border-radius: 10px;
+  padding: 0.6rem 1rem;
+  color: #94a3b8;
+  font-size: 0.9rem;
+  cursor: pointer;
+  margin-bottom: 1rem;
+  transition: background 0.15s;
+}
+.pred-back-btn:hover { background: #334155; color: #e2e8f0; }
+
+/* Glossary */
+.pred-glossary-card {
+  border: 1px solid #1e293b;
+  margin-top: 1rem;
+}
+.pred-glossary-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  cursor: pointer;
+  font-weight: 700;
+  color: #94a3b8;
+  font-size: 0.9rem;
+  padding: 0.2rem 0;
+}
+.glossary-item {
+  border-left: 3px solid #312e81;
+  padding: 0.7rem 0.8rem;
+  margin: 0.7rem 0;
+  background: #0f172a;
+  border-radius: 0 8px 8px 0;
+}
+.glossary-term {
+  font-weight: 700;
+  color: #a5b4fc;
+  font-size: 0.9rem;
+  margin-bottom: 0.3rem;
+}
+.glossary-def {
+  color: #94a3b8;
+  font-size: 0.82rem;
+  line-height: 1.5;
+}
+.glossary-def strong { color: #c7d2fe; }
+.glossary-def em { color: #818cf8; font-style: normal; font-family: monospace; }
