@@ -22,6 +22,7 @@ nav {
   background: #020617;
   border-top: 1px solid #1e293b;
   z-index: 100;
+  align-items: stretch;
 }
 
 nav button {
@@ -38,6 +39,111 @@ nav button {
 nav button.active {
   background: #1e293b;
   color: #e5e7eb;
+}
+
+/* Hamburger button */
+.nav-burger {
+  flex: 0 0 52px !important;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  gap: 4px;
+  padding: 0.8rem 0.6rem !important;
+  border-left: 1px solid #1e293b;
+}
+.nav-burger span {
+  display: block;
+  width: 18px;
+  height: 2px;
+  background: #94a3b8;
+  border-radius: 2px;
+  transition: background 0.15s;
+}
+.nav-burger.open span { background: #e5e7eb; }
+
+/* Side Drawer */
+#drawerOverlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.6);
+  z-index: 200;
+}
+#drawerOverlay.open { display: block; }
+
+#sideDrawer {
+  position: fixed;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: 72%;
+  max-width: 280px;
+  background: #020617;
+  border-left: 1px solid #1e293b;
+  z-index: 300;
+  transform: translateX(100%);
+  transition: transform 0.28s cubic-bezier(0.4,0,0.2,1);
+  padding: 1.2rem 0;
+  display: flex;
+  flex-direction: column;
+}
+#sideDrawer.open { transform: translateX(0); }
+
+.drawer-header {
+  font-size: 0.75rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: #475569;
+  padding: 0 1.2rem 1rem;
+  border-bottom: 1px solid #1e293b;
+  margin-bottom: 0.5rem;
+}
+
+.drawer-item {
+  width: 100%;
+  background: none;
+  border: none;
+  text-align: left;
+  padding: 0.9rem 1.2rem;
+  color: #94a3b8;
+  font-size: 0.95rem;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+  display: flex;
+  align-items: center;
+  gap: 0.8rem;
+}
+.drawer-item:hover { background: #1e293b; color: #e2e8f0; }
+.drawer-item.active { background: #1e293b; color: #e2e8f0; font-weight: 600; }
+.drawer-icon { font-size: 1.1rem; width: 1.5rem; text-align: center; }
+
+/* Category badge */
+.cat-badge {
+  display: inline-block;
+  background: #1e293b;
+  color: #a5b4fc;
+  font-size: 0.7rem;
+  font-weight: 700;
+  border-radius: 6px;
+  padding: 0.15rem 0.5rem;
+  margin-left: 0.4rem;
+  vertical-align: middle;
+  max-width: 120px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.subcat-badge {
+  display: inline-block;
+  background: #0f172a;
+  color: #64748b;
+  font-size: 0.65rem;
+  border-radius: 5px;
+  padding: 0.1rem 0.4rem;
+  margin-left: 0.3rem;
+  vertical-align: middle;
 }
 
 .view {

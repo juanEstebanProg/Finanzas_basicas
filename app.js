@@ -5,9 +5,10 @@ const db = JSON.parse(localStorage.getItem('financeDB')) || {
   movements: [],
   debts: [],
   incomeFunds: [],
-  fortnights: [],      // { id, number, startDate, endDate, amount, closed }
-  fixedExpenses: [],   // { id, title, desc, amount, period:'quincenal'|'mensual', payments:[] }
-  calendarMode: 'diario' // 'diario' | 'quincenal' | 'mensual'
+  fortnights: [],
+  fixedExpenses: [],
+  categories: [],       // { id, name, subcategories: [{id, name}] }
+  calendarMode: 'diario'
 };
 
 // migrate old debts that don't have debtCategory
@@ -41,6 +42,7 @@ function parseColombianNumber(str) {
 function saveDB() {
   db.calendarMode = calendarMode;
   if (!db.predictions) db.predictions = [];
+  if (!db.categories) db.categories = [];
   localStorage.setItem('financeDB', JSON.stringify(db));
   updateIncomeFunds();
   updateBalance();
@@ -50,6 +52,7 @@ function saveDB() {
   populateMonthSelect();
   updateIncomeSelect();
   renderSummaryCards();
+  populateCategorySelects();
 }
 
 function formatDate(dateStr) {
@@ -188,13 +191,17 @@ function addMovement() {
   }
 
   const amount = parseColombianNumber(movAmount.value);
+  const movCat = document.getElementById('movCategory');
+  const movSubCat = document.getElementById('movSubCategory');
   const movement = {
     id: Date.now(),
     date: movDate.value,
     type: movType.value,
     title: movTitle.value,
     desc: movDesc.value,
-    amount: amount
+    amount: amount,
+    categoryId: movCat ? movCat.value : '',
+    subCategoryId: movSubCat ? movSubCat.value : ''
   };
 
   if (movType.value === 'egreso') {
@@ -261,6 +268,10 @@ function addMovement() {
   movDesc.value = '';
   movAmount.value = '';
   if (incomeSourceSelect) incomeSourceSelect.value = '';
+  const movCatEl = document.getElementById('movCategory');
+  const movSubCatEl = document.getElementById('movSubCategory');
+  if (movCatEl) movCatEl.value = '';
+  if (movSubCatEl) { movSubCatEl.value = ''; movSubCatEl.style.display = 'none'; }
 
   if (calendarMode === 'diario') showDayMovements(movDate.value);
   else renderPeriodSummary();
@@ -283,10 +294,11 @@ function showDayMovements(date) {
       const fund = db.incomeFunds.find(f => f.id === mov.incomeSourceId);
       if (fund) sourceText = `<br><small style="color:#94a3b8;">Sale de: ${fund.title}</small>`;
     }
+    const catBadge = getCatBadgeHTML(mov.categoryId, mov.subCategoryId);
     html += `
       <div class="movement-item">
         <div>
-          <strong>${mov.title}</strong>
+          <strong>${mov.title}</strong>${catBadge}
           <div>${mov.type === 'ingreso' ? '➕' : '➖'} $${formatNumber(mov.amount)}</div>
           ${mov.desc ? `<small>${mov.desc}</small>` : ''}
           ${sourceText}
@@ -667,11 +679,17 @@ function saveFixedExpense() {
   const desc = document.getElementById('fixedExpDesc').value.trim();
   const amount = parseColombianNumber(document.getElementById('fixedExpAmount').value);
   const period = document.getElementById('fixedExpPeriod').value;
+  const catEl = document.getElementById('fixedExpCategory');
+  const subCatEl = document.getElementById('fixedExpSubCategory');
 
   if (!title || !amount) { alert('Título y monto son requeridos'); return; }
 
   if (!db.fixedExpenses) db.fixedExpenses = [];
-  db.fixedExpenses.push({ id: Date.now(), title, desc, amount, period, payments: [] });
+  db.fixedExpenses.push({
+    id: Date.now(), title, desc, amount, period, payments: [],
+    categoryId: catEl ? catEl.value : '',
+    subCategoryId: subCatEl ? subCatEl.value : ''
+  });
 
   closeFixedExpenseModal();
   saveDB();
@@ -842,30 +860,47 @@ function deleteFixedExpense(idx) {
 // ============================================================
 function renderChart() {
   const monthSelect = document.getElementById('chartMonthSelect');
+  const groupBySelect = document.getElementById('chartGroupBy');
   if (!monthSelect) return;
   const selectedMonth = monthSelect.value;
+  const groupBy = groupBySelect ? groupBySelect.value : 'title';
+
   let filteredMovements = db.movements.filter(m => m.type === 'egreso');
   if (selectedMonth) filteredMovements = filteredMovements.filter(m => m.date.slice(0, 7) === selectedMonth);
+
   const data = {};
-  filteredMovements.forEach(m => data[m.title] = (data[m.title] || 0) + m.amount);
+  filteredMovements.forEach(m => {
+    let key;
+    if (groupBy === 'category') {
+      const cat = m.categoryId && db.categories
+        ? db.categories.find(c => String(c.id) === String(m.categoryId))
+        : null;
+      key = cat ? cat.name : 'Sin categoría';
+    } else {
+      key = m.title;
+    }
+    data[key] = (data[key] || 0) + m.amount;
+  });
+
   if (chart) chart.destroy();
   const canvas = document.getElementById('expensesChart');
   if (!canvas) return;
   const ctx = canvas.getContext('2d');
+  const colors = ['#ef4444','#3b82f6','#22c55e','#f59e0b','#8b5cf6','#ec4899','#14b8a6','#f97316','#6366f1','#10b981','#e11d48','#0ea5e9','#84cc16','#d97706','#7c3aed'];
   chart = new Chart(ctx, {
     type: chartType,
     data: {
       labels: Object.keys(data),
       datasets: [{
         data: Object.values(data),
-        backgroundColor: ['#ef4444','#3b82f6','#22c55e','#f59e0b','#8b5cf6','#ec4899','#14b8a6','#f97316','#6366f1','#10b981']
+        backgroundColor: colors.slice(0, Object.keys(data).length)
       }]
     },
     options: {
       responsive: true,
       plugins: {
-        legend: { position: 'bottom', labels: { color: '#e5e7eb' } },
-        tooltip: { callbacks: { label: (ctx) => '$' + formatNumber(ctx.raw) } }
+        legend: { position: 'bottom', labels: { color: '#e5e7eb', font: { size: 11 } } },
+        tooltip: { callbacks: { label: (ctx) => ` $${formatNumber(ctx.raw)}` } }
       }
     }
   });
@@ -911,11 +946,12 @@ function openModal(date) {
         const fund = db.incomeFunds.find(f => f.id === mov.incomeSourceId);
         if (fund) sourceText = `<br><small>Sale de: ${fund.title}</small>`;
       }
+      const catBadge = getCatBadgeHTML(mov.categoryId, mov.subCategoryId);
       modalList.innerHTML += `
         <div class="modal-movement-item">
           <div style="display:flex;justify-content:space-between;align-items:start;">
             <div>
-              <strong>${mov.title}</strong>
+              <strong>${mov.title}</strong>${catBadge}
               <div>${mov.type === 'ingreso' ? 'Ingreso' : 'Egreso'}: $${formatNumber(mov.amount)}</div>
               <div><small>${day}/${month}/${year}</small></div>
               ${mov.desc ? `<small>${mov.desc}</small>` : ''}${sourceText}
@@ -1019,12 +1055,14 @@ function addDebt() {
   const d = {
     id: Date.now(),
     debtCategory: cat,
-    type: cat, // keep for compatibility
+    type: cat,
     person, title, desc,
     amount: totalWithInterest,
     principal: amount,
     date, remaining: totalWithInterest,
-    hasInterest, interestRate, interestPeriod, interestType, termMonths
+    hasInterest, interestRate, interestPeriod, interestType, termMonths,
+    categoryId: (document.getElementById('debtCategory')?.value || ''),
+    subCategoryId: (document.getElementById('debtSubCategory')?.value || '')
   };
 
   db.debts.push(d);
@@ -1219,23 +1257,57 @@ function payDebt(index, specificAmount = null) {
 // ============================================================
 //  FILTER
 // ============================================================
+function onFilterCatChange() {
+  const catId = document.getElementById('filterCategory').value;
+  const subSel = document.getElementById('filterSubCategory');
+  subSel.innerHTML = '<option value="">Todas las subcategorías</option>';
+  if (catId) {
+    const cat = (db.categories || []).find(c => String(c.id) === catId);
+    if (cat && cat.subcategories && cat.subcategories.length > 0) {
+      cat.subcategories.forEach(s => {
+        subSel.innerHTML += `<option value="${s.id}">${s.name}</option>`;
+      });
+      subSel.style.display = 'block';
+    } else {
+      subSel.style.display = 'none';
+    }
+  } else {
+    subSel.style.display = 'none';
+  }
+  renderFiltered();
+}
+
 function renderFiltered() {
   const filterResults = document.getElementById('filterResults');
   const filterTitle = document.getElementById('filterTitle');
   const filterAmountInput = document.getElementById('filterAmount');
+  const filterCatEl = document.getElementById('filterCategory');
+  const filterSubCatEl = document.getElementById('filterSubCategory');
+  const filterTypeEl = document.getElementById('filterType');
   const minAmount = parseColombianNumber(filterAmountInput.value);
+  const catId = filterCatEl ? filterCatEl.value : '';
+  const subCatId = filterSubCatEl ? filterSubCatEl.value : '';
+  const typeFilter = filterTypeEl ? filterTypeEl.value : '';
   filterResults.innerHTML = '';
   const filtered = db.movements
-    .filter(m => m.title.toLowerCase().includes(filterTitle.value.toLowerCase()) && m.amount >= minAmount)
+    .filter(m => {
+      if (!m.title.toLowerCase().includes(filterTitle.value.toLowerCase())) return false;
+      if (m.amount < minAmount) return false;
+      if (catId && String(m.categoryId) !== catId) return false;
+      if (subCatId && String(m.subCategoryId) !== subCatId) return false;
+      if (typeFilter && m.type !== typeFilter) return false;
+      return true;
+    })
     .sort((a, b) => new Date(b.date) - new Date(a.date));
-  if (filtered.length === 0) { filterResults.innerHTML = '<p>No se encontraron movimientos</p>'; return; }
+  if (filtered.length === 0) { filterResults.innerHTML = '<p style="color:#64748b;">No se encontraron movimientos</p>'; return; }
   filtered.forEach(m => {
     const [year, month, day] = m.date.split('-');
+    const catBadge = getCatBadgeHTML(m.categoryId, m.subCategoryId);
     filterResults.innerHTML += `
       <div class="movement-item">
         <div>
           <strong>${day}/${month}/${year}</strong>
-          <div>${m.title} - ${m.type === 'ingreso' ? '➕' : '➖'} $${formatNumber(m.amount)}</div>
+          <div>${m.title}${catBadge} — ${m.type === 'ingreso' ? '➕' : '➖'} $${formatNumber(m.amount)}</div>
           ${m.desc ? `<small>${m.desc}</small>` : ''}
         </div>
         <div class="movement-actions">
@@ -1250,7 +1322,11 @@ function renderFiltered() {
 //  EXPORT / IMPORT
 // ============================================================
 function exportTXT() {
-  const exportData = { movements: db.movements, debts: db.debts, incomeFunds: db.incomeFunds, fortnights: db.fortnights, fixedExpenses: db.fixedExpenses, predictions: db.predictions || [] };
+  const exportData = {
+    movements: db.movements, debts: db.debts, incomeFunds: db.incomeFunds,
+    fortnights: db.fortnights, fixedExpenses: db.fixedExpenses,
+    predictions: db.predictions || [], categories: db.categories || []
+  };
   const a = document.createElement('a');
   a.href = URL.createObjectURL(new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' }));
   a.download = 'finanzas_completas.json';
@@ -1275,6 +1351,7 @@ function handleFileSelect(input) {
           if (importedData.fortnights) db.fortnights.push(...(importedData.fortnights || []));
           if (importedData.fixedExpenses) db.fixedExpenses.push(...(importedData.fixedExpenses || []));
           if (importedData.predictions) db.predictions.push(...(importedData.predictions || []));
+          if (importedData.categories) db.categories.push(...(importedData.categories || []));
         } else {
           db.movements = importedData.movements;
           db.debts = importedData.debts || [];
@@ -1282,6 +1359,7 @@ function handleFileSelect(input) {
           db.fortnights = importedData.fortnights || [];
           db.fixedExpenses = importedData.fixedExpenses || [];
           db.predictions = importedData.predictions || [];
+          db.categories = importedData.categories || [];
         }
         saveDB();
         alert(`Importación exitosa: ${importedData.movements.length} movimientos`);
@@ -1995,20 +2073,284 @@ function buildEscenariosDetail(pred) {
 }
 
 // ============================================================
+//  CATEGORIES
+// ============================================================
+function getCatBadgeHTML(categoryId, subCategoryId) {
+  if (!categoryId || !db.categories) return '';
+  const cat = db.categories.find(c => String(c.id) === String(categoryId));
+  if (!cat) return '';
+  let html = `<span class="cat-badge">🏷️ ${cat.name}</span>`;
+  if (subCategoryId && cat.subcategories) {
+    const sub = cat.subcategories.find(s => String(s.id) === String(subCategoryId));
+    if (sub) html += `<span class="subcat-badge">${sub.name}</span>`;
+  }
+  return html;
+}
+
+function populateCategorySelects() {
+  if (!db.categories) db.categories = [];
+  const cats = db.categories;
+  const selectors = ['movCategory', 'fixedExpCategory', 'debtCategory', 'filterCategory'];
+  selectors.forEach(selId => {
+    const sel = document.getElementById(selId);
+    if (!sel) return;
+    const cur = sel.value;
+    sel.innerHTML = selId === 'filterCategory'
+      ? '<option value="">Todas las categorías</option>'
+      : '<option value="">Categoría (opcional)</option>';
+    cats.forEach(c => {
+      sel.innerHTML += `<option value="${c.id}">${c.name}</option>`;
+    });
+    if (cur) sel.value = cur;
+  });
+  // hide all sub selects that might be open
+  ['movSubCategory','fixedExpSubCategory','debtSubCategory'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el && !el.value) el.style.display = 'none';
+  });
+}
+
+function renderMovSubCats() { renderSubCats('movCategory','movSubCategory'); }
+function renderFixedSubCats() { renderSubCats('fixedExpCategory','fixedExpSubCategory'); }
+function renderDebtSubCats() { renderSubCats('debtCategory','debtSubCategory'); }
+
+function renderSubCats(parentSelId, subSelId) {
+  const parentSel = document.getElementById(parentSelId);
+  const subSel = document.getElementById(subSelId);
+  if (!parentSel || !subSel) return;
+  const catId = parentSel.value;
+  subSel.innerHTML = '<option value="">Subcategoría (opcional)</option>';
+  if (!catId) { subSel.style.display = 'none'; return; }
+  const cat = db.categories.find(c => String(c.id) === catId);
+  if (!cat || !cat.subcategories || cat.subcategories.length === 0) {
+    subSel.style.display = 'none'; return;
+  }
+  cat.subcategories.forEach(s => {
+    subSel.innerHTML += `<option value="${s.id}">${s.name}</option>`;
+  });
+  subSel.style.display = 'block';
+}
+
+// ── Modal ────────────────────────────────────────────────────
+let editingSubCatForId = null; // categoryId being expanded for subcats
+
+function openCategoriesModal() {
+  document.getElementById('categoriesModal').style.display = 'flex';
+  renderCategoriesList();
+}
+function closeCategoriesModal() {
+  document.getElementById('categoriesModal').style.display = 'none';
+  editingSubCatForId = null;
+  closeSubCatSection();
+}
+
+function addCategory() {
+  const name = document.getElementById('newCatName').value.trim();
+  if (!name) return;
+  if (!db.categories) db.categories = [];
+  if (db.categories.some(c => c.name.toLowerCase() === name.toLowerCase())) {
+    alert('Ya existe una categoría con ese nombre'); return;
+  }
+  db.categories.push({ id: Date.now(), name, subcategories: [] });
+  document.getElementById('newCatName').value = '';
+  localStorage.setItem('financeDB', JSON.stringify(db));
+  populateCategorySelects();
+  renderCategoriesList();
+}
+
+function deleteCategory(id) {
+  if (!confirm('¿Eliminar esta categoría?')) return;
+  db.categories = db.categories.filter(c => c.id !== id);
+  localStorage.setItem('financeDB', JSON.stringify(db));
+  populateCategorySelects();
+  renderCategoriesList();
+}
+
+function openSubCatSection(catId) {
+  editingSubCatForId = catId;
+  const cat = db.categories.find(c => c.id === catId);
+  if (!cat) return;
+  document.getElementById('catSubParentName').textContent = cat.name;
+  document.getElementById('catSubSection').style.display = 'block';
+  document.getElementById('newSubCatName').value = '';
+  document.getElementById('newSubCatName').focus();
+}
+function closeSubCatSection() {
+  editingSubCatForId = null;
+  document.getElementById('catSubSection').style.display = 'none';
+}
+
+function addSubCategory() {
+  if (!editingSubCatForId) return;
+  const name = document.getElementById('newSubCatName').value.trim();
+  if (!name) return;
+  const cat = db.categories.find(c => c.id === editingSubCatForId);
+  if (!cat) return;
+  if (!cat.subcategories) cat.subcategories = [];
+  if (cat.subcategories.some(s => s.name.toLowerCase() === name.toLowerCase())) {
+    alert('Ya existe esa subcategoría'); return;
+  }
+  cat.subcategories.push({ id: Date.now(), name });
+  document.getElementById('newSubCatName').value = '';
+  localStorage.setItem('financeDB', JSON.stringify(db));
+  populateCategorySelects();
+  renderCategoriesList();
+}
+
+function deleteSubCategory(catId, subId) {
+  const cat = db.categories.find(c => c.id === catId);
+  if (!cat) return;
+  cat.subcategories = cat.subcategories.filter(s => s.id !== subId);
+  localStorage.setItem('financeDB', JSON.stringify(db));
+  populateCategorySelects();
+  renderCategoriesList();
+}
+
+function renderCategoriesList() {
+  const el = document.getElementById('categoriesList');
+  if (!el) return;
+  if (!db.categories || db.categories.length === 0) {
+    el.innerHTML = '<p style="color:#64748b;font-size:0.85rem;">Sin categorías aún.</p>';
+    return;
+  }
+  el.innerHTML = db.categories.map(cat => {
+    const subHTML = cat.subcategories && cat.subcategories.length > 0
+      ? `<div style="padding-left:1rem;margin-top:0.4rem;">${cat.subcategories.map(s =>
+          `<div style="display:flex;justify-content:space-between;align-items:center;padding:0.25rem 0.5rem;background:#0a1628;border-radius:6px;margin:0.2rem 0;font-size:0.8rem;color:#94a3b8;">
+            <span>${s.name}</span>
+            <button class="danger" onclick="deleteSubCategory(${cat.id},${s.id})" style="padding:0.15rem 0.4rem;font-size:0.7rem;">✕</button>
+          </div>`).join('')}</div>` : '';
+    return `
+      <div style="background:#1e293b;border-radius:10px;padding:0.7rem 0.8rem;margin-bottom:0.5rem;">
+        <div style="display:flex;justify-content:space-between;align-items:center;">
+          <span style="font-weight:700;color:#e2e8f0;">🏷️ ${cat.name}</span>
+          <div style="display:flex;gap:0.3rem;">
+            <button class="secondary" onclick="openSubCatSection(${cat.id})" style="font-size:0.75rem;padding:0.25rem 0.5rem;">+ Sub</button>
+            <button class="danger" onclick="deleteCategory(${cat.id})" style="padding:0.25rem 0.5rem;font-size:0.75rem;">✕</button>
+          </div>
+        </div>
+        ${subHTML}
+      </div>`;
+  }).join('');
+}
+
+// ============================================================
+//  SIDE DRAWER
+// ============================================================
+function toggleDrawer() {
+  const drawer = document.getElementById('sideDrawer');
+  const overlay = document.getElementById('drawerOverlay');
+  const burger = document.querySelector('.nav-burger');
+  const isOpen = drawer.classList.contains('open');
+  if (isOpen) {
+    drawer.classList.remove('open');
+    overlay.classList.remove('open');
+    burger.classList.remove('open');
+  } else {
+    drawer.classList.add('open');
+    overlay.classList.add('open');
+    burger.classList.add('open');
+  }
+}
+
+function closeDrawer() {
+  document.getElementById('sideDrawer').classList.remove('open');
+  document.getElementById('drawerOverlay').classList.remove('open');
+  document.querySelector('.nav-burger').classList.remove('open');
+}
+
+function drawerNav(viewId) {
+  closeDrawer();
+  // Mark drawer items active
+  document.querySelectorAll('.drawer-item').forEach(b => {
+    b.classList.toggle('active', b.dataset.view === viewId);
+  });
+  // Deactivate main nav buttons
+  document.querySelectorAll('.nav-main').forEach(b => b.classList.remove('active'));
+  // Switch view (no btn to pass so handle inline)
+  document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+  document.getElementById(viewId).classList.add('active');
+  if (viewId === 'predictions') renderPredictionsList();
+  if (viewId === 'tips') renderTips();
+  if (viewId === 'filter') { populateCategorySelects(); }
+  setTimeout(initAutoFormat, 10);
+}
+
+// ============================================================
+//  CONSEJOS FINANCIEROS
+// ============================================================
+const TIPS_DATA = [
+  {
+    icon: '🛡️', color: '#22c55e', title: 'Fondo de emergencia',
+    body: 'La regla internacional recomendada es tener entre 3 y 6 meses de gastos fijos en una cuenta de ahorro líquida. En Colombia, el DANE reporta que más del 60% de los hogares no tienen este colchón. Comienza con un mes y auméntalo gradualmente.'
+  },
+  {
+    icon: '📊', color: '#3b82f6', title: 'Regla 50/30/20',
+    body: 'Divide tu ingreso neto en: 50% para necesidades (arriendo, servicios, alimentación), 30% para deseos (entretenimiento, ropa), y 20% para ahorro e inversión. Ajústala a tu contexto colombiano considerando el 4×1000 y el GMF.'
+  },
+  {
+    icon: '💳', color: '#ef4444', title: 'Peligro de las tarjetas de crédito',
+    body: 'Las tasas de interés de tarjetas en Colombia pueden superar el 28% EA. Paga siempre el total del extracto, no el mínimo. Pagar solo el mínimo puede triplicar el tiempo para saldar la deuda. Verifica que la tasa nunca supere la tasa de usura certificada por la Superfinanciera.'
+  },
+  {
+    icon: '🏦', color: '#f59e0b', title: 'CDT vs cuenta de ahorros',
+    body: 'Un CDT (Certificado de Depósito a Término) generalmente ofrece mejores rendimientos que una cuenta de ahorros normal. En Colombia, los CDT están protegidos por el Fondo de Garantías de Instituciones Financieras (FOGAFIN) hasta $50 millones por persona.'
+  },
+  {
+    icon: '📱', color: '#8b5cf6', title: 'Nequi y Daviplata: cuida el 4×1000',
+    body: 'Las billeteras digitales en Colombia tienen exención del Gravamen a los Movimientos Financieros (GMF) hasta cierto límite mensual. Consulta con tu banco cuál es tu cuenta exenta para evitar pagar el 4×1000 en cada transacción.'
+  },
+  {
+    icon: '📈', color: '#14b8a6', title: 'Pensiones voluntarias y AFC',
+    body: 'Los aportes voluntarios a fondos de pensiones y cuentas AFC (Ahorro para el Fomento de la Construcción) tienen beneficios tributarios en Colombia: puedes deducirlos de tu renta hasta el 30% de tu ingreso laboral o hasta 3.800 UVT al año (Estatuto Tributario Art. 126-1).'
+  },
+  {
+    icon: '⚠️', color: '#f97316', title: 'Préstamos gota a gota: cuidado',
+    body: 'Los préstamos informales "gota a gota" cobran tasas que pueden superar el 200% anual, muy por encima de la tasa de usura. Son ilegales en Colombia si superan la tasa certificada. Si necesitas crédito urgente, considera las cooperativas de ahorro y crédito vigiladas por la Supersolidaria.'
+  },
+  {
+    icon: '🏠', color: '#6366f1', title: 'Subsidios de vivienda VIS',
+    body: 'En Colombia, las viviendas de Interés Social (VIS) tienen créditos con tasas subsidiadas por el gobierno a través del programa Mi Casa Ya. Los créditos se denominan en UVR (ajustados a inflación) o en pesos con tasa fija. Infórmate en el Ministerio de Vivienda antes de comprar.'
+  },
+  {
+    icon: '🔄', color: '#ec4899', title: 'Portabilidad financiera',
+    body: 'En Colombia puedes trasladar tu crédito hipotecario entre entidades financieras para conseguir mejor tasa (Ley 546 de 1999). Compara periódicamente usando el simulador del Banco de la República y refinancia si encuentras una diferencia significativa en la tasa EA.'
+  },
+  {
+    icon: '📉', color: '#94a3b8', title: 'Inflación y poder adquisitivo',
+    body: 'Si tu dinero está quieto en una cuenta corriente, pierde valor real con la inflación. En 2023 Colombia cerró con inflación cercana al 9%. Busca instrumentos que rindan al menos por encima del IPC para que tu ahorro no se erosione con el tiempo.'
+  }
+];
+
+function renderTips() {
+  const el = document.getElementById('tipsContent');
+  if (!el) return;
+  el.innerHTML = TIPS_DATA.map(t => `
+    <div class="card" style="border-left:4px solid ${t.color};margin-bottom:0.8rem;">
+      <div style="display:flex;align-items:center;gap:0.6rem;margin-bottom:0.5rem;">
+        <span style="font-size:1.4rem;">${t.icon}</span>
+        <span style="font-weight:700;color:#f1f5f9;font-size:0.95rem;">${t.title}</span>
+      </div>
+      <p style="color:#94a3b8;font-size:0.85rem;line-height:1.6;margin:0;">${t.body}</p>
+    </div>`).join('');
+}
+
+// ============================================================
 //  VIEW NAVIGATION
 // ============================================================
 function showView(id, btn) {
   document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
   document.getElementById(id).classList.add('active');
-  document.querySelectorAll('nav button').forEach(b => b.classList.remove('active'));
-  btn.classList.add('active');
-  if (id === 'calendar') {
-    renderCalendarSection();
-    toggleIncomeSelect();
-  }
-  if (id === 'predictions') {
-    renderPredictionsList();
-  }
+  // Update nav-main buttons only
+  document.querySelectorAll('.nav-main').forEach(b => b.classList.remove('active'));
+  if (btn && btn.classList.contains('nav-main')) btn.classList.add('active');
+  // Clear drawer active state when using main nav
+  document.querySelectorAll('.drawer-item').forEach(b => b.classList.remove('active'));
+  closeDrawer();
+  if (id === 'calendar') { renderCalendarSection(); toggleIncomeSelect(); }
+  if (id === 'predictions') renderPredictionsList();
+  if (id === 'tips') renderTips();
+  if (id === 'filter') populateCategorySelects();
   setTimeout(initAutoFormat, 10);
 }
 
@@ -2026,8 +2368,8 @@ document.addEventListener('DOMContentLoaded', function() {
   if (!db.fortnights) db.fortnights = [];
   if (!db.fixedExpenses) db.fixedExpenses = [];
   if (!db.predictions) db.predictions = [];
+  if (!db.categories) db.categories = [];
 
-  // Set mode selector
   const modeSelect = document.getElementById('calendarModeSelect');
   if (modeSelect) modeSelect.value = calendarMode;
 
@@ -2039,6 +2381,7 @@ document.addEventListener('DOMContentLoaded', function() {
   renderSummaryCards();
   populateMonthSelect();
   renderPredictionsList();
+  populateCategorySelects();
 
   const today = new Date().toISOString().slice(0, 10);
   const movDate = document.getElementById('movDate');
@@ -2055,6 +2398,7 @@ document.addEventListener('DOMContentLoaded', function() {
   document.getElementById('fixedExpenseModal').addEventListener('click', function(e) { if (e.target === this) closeFixedExpenseModal(); });
   document.getElementById('newPredictionModal').addEventListener('click', function(e) { if (e.target === this) closeNewPredictionModal(); });
   document.getElementById('predictionFormModal').addEventListener('click', function(e) { if (e.target === this) closePredictionFormModal(); });
+  document.getElementById('categoriesModal').addEventListener('click', function(e) { if (e.target === this) closeCategoriesModal(); });
 
   if ('serviceWorker' in navigator) navigator.serviceWorker.register('/Finanzas_basicas/sw.js');
 });

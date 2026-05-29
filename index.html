@@ -29,6 +29,10 @@
       <select id="chartMonthSelect" onchange="renderChart()">
         <option value="">Todos los meses</option>
       </select>
+      <select id="chartGroupBy" onchange="renderChart()">
+        <option value="title">Por título</option>
+        <option value="category">Por categoría</option>
+      </select>
       <button onclick="toggleChartType()" class="secondary">Cambiar tipo</button>
     </div>
     <canvas id="expensesChart"></canvas>
@@ -86,6 +90,15 @@
     <select id="incomeSourceSelect" style="display:none;">
       <option value="">Cargar a:</option>
     </select>
+    <select id="movCategory" onchange="renderMovSubCats()">
+      <option value="">Categoría (opcional)</option>
+    </select>
+    <select id="movSubCategory" style="display:none;">
+      <option value="">Subcategoría (opcional)</option>
+    </select>
+    <div style="text-align:right;margin:-0.2rem 0 0.4rem;">
+      <button class="secondary" onclick="openCategoriesModal()" style="font-size:0.75rem;padding:0.25rem 0.6rem;">+ Gestionar categorías</button>
+    </div>
     <input id="movTitle" placeholder="Título" />
     <textarea id="movDesc" placeholder="Descripción (opcional)"></textarea>
     <input type="text" id="movAmount" placeholder="Monto" inputmode="decimal" />
@@ -100,6 +113,17 @@
     <h3>Filtrar movimientos</h3>
     <input id="filterTitle" placeholder="Título" oninput="renderFiltered()" />
     <input type="text" id="filterAmount" placeholder="Monto mínimo" oninput="renderFiltered()" inputmode="decimal" />
+    <select id="filterCategory" onchange="onFilterCatChange()">
+      <option value="">Todas las categorías</option>
+    </select>
+    <select id="filterSubCategory" style="display:none;" onchange="renderFiltered()">
+      <option value="">Todas las subcategorías</option>
+    </select>
+    <select id="filterType" onchange="renderFiltered()">
+      <option value="">Ingresos y egresos</option>
+      <option value="ingreso">Solo ingresos</option>
+      <option value="egreso">Solo egresos</option>
+    </select>
     <div id="filterResults"></div>
   </div>
 </div>
@@ -110,15 +134,21 @@
     <h3>Nueva deuda / préstamo</h3>
 
     <select id="debtType" onchange="toggleInterestFields()">
-      <option value="presto">💸 Presté (yo presté dinero)</option>
-      <option value="mePrestaron">📥 Me prestaron (me dieron un préstamo)</option>
-      <option value="meDeben">🤝 Me deben (sin salida de dinero)</option>
-      <option value="debo">📤 Debo (sin entrada de dinero)</option>
+      <option value="presto">Presté (yo presté dinero)</option>
+      <option value="mePrestaron">Me prestaron (me dieron un préstamo)</option>
+      <option value="meDeben">Me deben (sin salida de dinero)</option>
+      <option value="debo">Debo (sin entrada de dinero)</option>
     </select>
 
     <input id="debtPerson" placeholder="Persona" />
     <input id="debtTitle" placeholder="Título" />
     <textarea id="debtDesc" placeholder="Descripción"></textarea>
+    <select id="debtCategory" onchange="renderDebtSubCats()">
+      <option value="">Categoría (opcional)</option>
+    </select>
+    <select id="debtSubCategory" style="display:none;">
+      <option value="">Subcategoría (opcional)</option>
+    </select>
     <input type="text" id="debtAmount" placeholder="Monto capital" inputmode="decimal" oninput="formatInputNumber(event);updateInterestPreview()" />
     <input type="date" id="debtDate" />
 
@@ -208,6 +238,12 @@
     <h3>📌 Nuevo Gasto Fijo</h3>
     <input id="fixedExpTitle" placeholder="Título (ej: Arriendo, Netflix)" />
     <textarea id="fixedExpDesc" placeholder="Descripción (opcional)"></textarea>
+    <select id="fixedExpCategory" onchange="renderFixedSubCats()">
+      <option value="">Categoría (opcional)</option>
+    </select>
+    <select id="fixedExpSubCategory" style="display:none;">
+      <option value="">Subcategoría (opcional)</option>
+    </select>
     <input type="text" id="fixedExpAmount" placeholder="Monto" inputmode="decimal" />
     <label class="field-label" style="margin-top:0.5rem;">Frecuencia de pago</label>
     <select id="fixedExpPeriod">
@@ -347,14 +383,63 @@
   <div class="modal-content" id="predictionFormContent"></div>
 </div>
 
+<!-- ===================== CONSEJOS ===================== -->
+<div id="tips" class="view">
+  <div class="pred-header-strip" style="background:linear-gradient(135deg,#0f172a,#1a2744);">
+    <div>
+      <div class="pred-header-title"> Consejos Financieros</div>
+      <div class="pred-header-sub" style="color:#3b82f6;">Educación financiera para Colombia</div>
+    </div>
+  </div>
+  <div id="tipsContent"></div>
+</div>
+
 <!-- ===================== NAV ===================== -->
 <nav>
-  <button class="active" onclick="showView('home', this)">Resumen</button>
-  <button onclick="showView('calendar', this)">Calendario</button>
-  <button onclick="showView('filter', this)">Filtros</button>
-  <button onclick="showView('debts', this)">Deudas</button>
-  <button onclick="showView('predictions', this)">🔮</button>
+  <button class="nav-main active" data-view="home" onclick="showView('home',this)">Resumen</button>
+  <button class="nav-main" data-view="calendar" onclick="showView('calendar',this)">Calendario</button>
+  <button class="nav-main" data-view="debts" onclick="showView('debts',this)">Deudas</button>
+  <button class="nav-burger" onclick="toggleDrawer()" aria-label="Más opciones">
+    <span></span><span></span><span></span>
+  </button>
 </nav>
+
+<!-- ===================== SIDE DRAWER ===================== -->
+<div id="drawerOverlay" onclick="closeDrawer()"></div>
+<div id="sideDrawer">
+  <div class="drawer-header">Más opciones</div>
+  <button class="drawer-item" data-view="filter" onclick="drawerNav('filter')">
+    <span class="drawer-icon">🔍</span> Filtros
+  </button>
+  <button class="drawer-item" data-view="tips" onclick="drawerNav('tips')">
+    <span class="drawer-icon">💡</span> Consejos financieros
+  </button>
+  <button class="drawer-item" data-view="predictions" onclick="drawerNav('predictions')">
+    <span class="drawer-icon">📊</span> Proyecciones
+  </button>
+</div>
+
+<!-- ===================== CATEGORIES MODAL ===================== -->
+<div id="categoriesModal" class="modal">
+  <div class="modal-content">
+    <h3>🏷️ Categorías</h3>
+    <p style="color:#64748b;font-size:0.85rem;margin-bottom:1rem;">Crea y gestiona tus categorías.</p>
+    <div style="display:flex;gap:0.5rem;margin-bottom:0.8rem;">
+      <input id="newCatName" placeholder="Nombre de categoría" style="flex:1;margin:0;" />
+      <button class="primary" onclick="addCategory()" style="width:auto;padding:0.5rem 1rem;margin:0;">+ Añadir</button>
+    </div>
+    <div id="catSubSection" style="display:none;margin-bottom:0.8rem;">
+      <div style="font-size:0.78rem;color:#64748b;font-weight:700;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:0.4rem;">Subcategorías de: <span id="catSubParentName"></span></div>
+      <div style="display:flex;gap:0.5rem;">
+        <input id="newSubCatName" placeholder="Nombre de subcategoría" style="flex:1;margin:0;" />
+        <button class="primary" onclick="addSubCategory()" style="width:auto;padding:0.5rem 1rem;margin:0;">+ Añadir</button>
+      </div>
+      <button onclick="closeSubCatSection()" class="secondary" style="margin-top:0.4rem;font-size:0.78rem;">✕ Cerrar subcategorías</button>
+    </div>
+    <div id="categoriesList"></div>
+    <button onclick="closeCategoriesModal()" class="secondary" style="margin-top:1rem;width:100%;">Cerrar</button>
+  </div>
+</div>
 
 <script src="app.js"></script>
 </body>
