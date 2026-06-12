@@ -255,6 +255,17 @@
   </div>
 </div>
 
+<!-- Insufficient Funds Modal -->
+<div id="insufficientFundsModal" class="modal">
+  <div class="modal-content" style="text-align:center;max-width:400px;">
+    <div style="font-size:3rem;margin-bottom:1rem;">⚠️</div>
+    <h3 id="insufficientTitle">Fondos Insuficientes</h3>
+    <p id="insufficientMessage" style="color:#94a3b8;margin-bottom:1rem;"></p>
+    <div id="insufficientDetails" style="background:#1e293b;border-radius:8px;padding:1rem;margin-bottom:1rem;text-align:left;"></div>
+    <button onclick="closeInsufficientFundsModal()" class="primary" style="width:100%;">Entendido</button>
+  </div>
+</div>
+
 <!-- ===================== PREDICCIONES ===================== -->
 <div id="predictions" class="view">
 
@@ -394,11 +405,114 @@
   <div id="tipsContent"></div>
 </div>
 
+<!-- ===================== PERSONALIZACIÓN ===================== -->
+<div id="settings" class="view">
+  <div class="card" style="padding:1.5rem;">
+    <h2 style="margin-top:0;">⚙️ Personalización</h2>
+    <p style="color:#94a3b8;margin-bottom:1.5rem;">Personaliza los colores, fuentes y estilos de la aplicación</p>
+    
+    <!-- Sección Colores -->
+    <div class="settings-section">
+      <h3>🎨 Temas Preestablecidos</h3>
+      <div class="theme-presets" id="themePresets"></div>
+    </div>
+    
+    <!-- Colores Personalizados -->
+    <div class="settings-section">
+      <h3>🎯 Personalización Avanzada</h3>
+      
+      <!-- Colores principales -->
+      <div class="settings-group">
+        <label class="settings-group-label">Colores Principales</label>
+        <div class="color-picker-wrap">
+          <label>Color de Fondo</label>
+          <input type="color" id="bgMainColor" onchange="applyCustomTheme()">
+          <span class="color-preview" id="bgMainColorPreview"></span>
+        </div>
+        <div class="color-picker-wrap">
+          <label>Color de Fondo Secundario</label>
+          <input type="color" id="bgSecondaryColor" onchange="applyCustomTheme()">
+          <span class="color-preview" id="bgSecondaryColorPreview"></span>
+        </div>
+        <div class="color-picker-wrap">
+          <label>Color de Texto</label>
+          <input type="color" id="textPrimaryColor" onchange="applyCustomTheme()">
+          <span class="color-preview" id="textPrimaryColorPreview"></span>
+        </div>
+        <div class="color-picker-wrap">
+          <label>Color de Texto Secundario</label>
+          <input type="color" id="textSecondaryColor" onchange="applyCustomTheme()">
+          <span class="color-preview" id="textSecondaryColorPreview"></span>
+        </div>
+      </div>
+      
+      <!-- Colores de Gráficos -->
+      <div class="settings-group">
+        <label class="settings-group-label">Colores de Gráficos</label>
+        <div class="color-picker-wrap">
+          <label>Color Ingresos</label>
+          <input type="color" id="chartIncomeColor" onchange="applyCustomTheme()">
+          <span class="color-preview" id="chartIncomeColorPreview"></span>
+        </div>
+        <div class="color-picker-wrap">
+          <label>Color Egresos</label>
+          <input type="color" id="chartExpenseColor" onchange="applyCustomTheme()">
+          <span class="color-preview" id="chartExpenseColorPreview"></span>
+        </div>
+        <div class="color-picker-wrap">
+          <label>Color Ahorro</label>
+          <input type="color" id="chartSavingsColor" onchange="applyCustomTheme()">
+          <span class="color-preview" id="chartSavingsColorPreview"></span>
+        </div>
+      </div>
+      <!-- Paleta de colores del gráfico -->
+      <div class="settings-group">
+        <label class="settings-group-label">Paleta de Colores del Gráfico</label>
+        <p style="color:#64748b;font-size:0.8rem;margin:0 0 0.8rem;">
+          Define los colores que se usarán para los segmentos del gráfico. Si hay más segmentos que colores, la paleta cicla automáticamente.
+        </p>
+        <div id="chartPaletteColors" style="display:flex;flex-wrap:wrap;gap:0.5rem;margin-bottom:0.8rem;"></div>
+        <div style="display:flex;gap:0.5rem;flex-wrap:wrap;">
+          <button class="secondary" onclick="addPaletteColor()" style="font-size:0.85rem;">+ Agregar color</button>
+          <button class="secondary" onclick="resetChartPalette()" style="font-size:0.85rem;">↺ Restaurar paleta</button>
+        </div>
+      </div>
+      
+      <!-- Tamaño de Fuente -->
+      <div class="settings-group">
+        <label class="settings-group-label">Tamaño de Fuente</label>
+        <div style="display:flex;align-items:center;gap:1rem;margin-bottom:1rem;">
+          <input type="range" id="fontSizeSlider" min="80" max="120" value="100" onchange="applyCustomTheme()" style="flex:1;margin:0;width:auto;">
+          <span id="fontSizeLabel" style="color:#e5e7eb;font-weight:600;min-width:50px;">100%</span>
+        </div>
+      </div>
+    </div>
+    
+    <!-- Botones de acción -->
+    <div class="settings-button-group">
+      <button class="secondary" onclick="resetToDefaultTheme()">Restaurar por defecto</button>
+      <button class="primary" onclick="exportTheme()">Exportar tema</button>
+      <button class="secondary" onclick="importThemeFile()">Importar tema</button>
+    </div>
+    <input type="file" id="themeFileInput" accept=".json" style="display:none" onchange="handleThemeFileSelect(this)" />
+  </div>
+</div>
+
 <!-- ===================== NAV ===================== -->
 <nav>
   <button class="nav-main active" data-view="home" onclick="showView('home',this)">Resumen</button>
   <button class="nav-main" data-view="calendar" onclick="showView('calendar',this)">Calendario</button>
   <button class="nav-main" data-view="debts" onclick="showView('debts',this)">Deudas</button>
+  
+  <!-- Opciones que aparecen en PC -->
+  <div class="nav-drawer-items">
+    <button data-view="filter" onclick="navAction('filter')">🔍 Filtros</button>
+    <button data-view="tips" onclick="navAction('tips')">💡 Consejos</button>
+    <button data-view="predictions" onclick="navAction('predictions')">📊 Proyecciones</button>
+    <button data-view="settings" onclick="navAction('settings')">⚙️ Personalización</button>
+  </div>
+  
+  <!-- Hamburger para móvil -->
   <button class="nav-burger" onclick="toggleDrawer()" aria-label="Más opciones">
     <span></span><span></span><span></span>
   </button>
@@ -416,6 +530,9 @@
   </button>
   <button class="drawer-item" data-view="predictions" onclick="drawerNav('predictions')">
     <span class="drawer-icon">📊</span> Proyecciones
+  </button>
+  <button class="drawer-item" data-view="settings" onclick="drawerNav('settings')">
+    <span class="drawer-icon">⚙️</span> Personalización
   </button>
 </div>
 
