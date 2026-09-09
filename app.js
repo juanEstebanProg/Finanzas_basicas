@@ -11,81 +11,6 @@ const db = JSON.parse(localStorage.getItem('financeDB')) || {
   calendarMode: 'diario'
 };
 
-// ============================================================
-//  THEME / PERSONALIZACIÓN
-// ============================================================
-const DEFAULT_THEME = {
-  bgMain: '#0f172a',
-  bgSecondary: '#020617',
-  textPrimary: '#e5e7eb',
-  textSecondary: '#94a3b8',
-  chartIncome: '#22c55e',
-  chartExpense: '#ef4444',
-  chartSavings: '#3b82f6',
-  fontSize: 100,
-  chartPalette: ['#ef4444','#3b82f6','#22c55e','#f59e0b','#8b5cf6','#ec4899','#14b8a6','#f97316','#6366f1','#10b981'] // ← nuevo
-};
-
-const THEME_PRESETS = {
-  dark: {
-    name: 'Oscuro (por defecto)',
-    bgMain: '#0f172a',
-    bgSecondary: '#020617',
-    textPrimary: '#e5e7eb',
-    textSecondary: '#94a3b8',
-    chartIncome: '#22c55e',
-    chartExpense: '#ef4444',
-    chartSavings: '#3b82f6',
-    chartPalette: ['#ef4444','#3b82f6','#22c55e','#f59e0b','#8b5cf6','#ec4899','#14b8a6','#f97316','#6366f1','#10b981']
-  },
-  ocean: {
-    name: 'Océano',
-    bgMain: '#0c2b45',
-    bgSecondary: '#051e2d',
-    textPrimary: '#e8f4f8',
-    textSecondary: '#89b8cf',
-    chartIncome: '#4facfe',
-    chartExpense: '#ff6b6b',
-    chartSavings: '#26de81',
-    chartPalette: ['#ff6b6b','#4facfe','#26de81','#ffd32a','#a29bfe','#fd79a8','#00cec9','#e17055','#74b9ff','#55efc4']
-  },
-  forest: {
-    name: 'Bosque',
-    bgMain: '#1a3a2d',
-    bgSecondary: '#0f2620',
-    textPrimary: '#e8f5e9',
-    textSecondary: '#80b89a',
-    chartIncome: '#00c853',
-    chartExpense: '#d32f2f',
-    chartSavings: '#1976d2',
-    chartPalette: ['#d32f2f','#1976d2','#00c853','#f9a825','#7b1fa2','#c2185b','#00838f','#e64a19','#283593','#2e7d32']
-  },
-  sunset: {
-    name: 'Atardecer',
-    bgMain: '#3d2817',
-    bgSecondary: '#2a1810',
-    textPrimary: '#fef5e7',
-    textSecondary: '#d4a574',
-    chartIncome: '#ff9800',
-    chartExpense: '#f44336',
-    chartSavings: '#2196f3',
-    chartPalette: ['#f44336','#ff9800','#ffc107','#ff5722','#e91e63','#9c27b0','#2196f3','#00bcd4','#4caf50','#8bc34a']
-  },
-  neon: {
-    name: 'Neón',
-    bgMain: '#0a0e27',
-    bgSecondary: '#050810',
-    textPrimary: '#00ff88',
-    textSecondary: '#00ff44',
-    chartIncome: '#00ff88',
-    chartExpense: '#ff006e',
-    chartSavings: '#00d4ff',
-    chartPalette: ['#ff006e','#00ff88','#00d4ff','#ffee00','#ff00ff','#00ffcc','#ff4500','#7fff00','#ff1493','#00bfff']
-  }
-};
-
-let currentTheme = JSON.parse(localStorage.getItem('financeTheme')) || { ...DEFAULT_THEME };
-
 // migrate old debts that don't have debtCategory
 db.debts.forEach(d => {
   if (!d.debtCategory) {
@@ -217,46 +142,34 @@ function updateBalance() {
 function renderSummaryCards() {
   const container = document.getElementById('summaryCards');
   if (!container) return;
-
   let totalIngresos = 0, totalEgresos = 0, totalMeDeben = 0, totalDebo = 0;
-
   db.movements.forEach(m => {
     if (m.type === 'ingreso') totalIngresos += m.amount;
     else totalEgresos += m.amount;
   });
-
   db.debts.forEach(d => {
     const cat = d.debtCategory || d.type;
     if (cat === 'meDeben' || cat === 'presto') totalMeDeben += (d.remaining || 0);
     else totalDebo += (d.remaining || 0);
   });
-
-  // Derivar colores de fondo más oscuros a partir del tema actual
-  const incomeCardBg  = shadeColor(currentTheme.chartIncome,  -60);
-  const expenseCardBg = shadeColor(currentTheme.chartExpense, -60);
-  const savingsCardBg = shadeColor(currentTheme.chartSavings, -60);
-  const debtCardBg    = shadeColor(currentTheme.chartExpense, -50);
-
   container.innerHTML = `
-    <h2 style="color:${currentTheme.textPrimary};font-size:1.2rem;font-weight:700;margin-bottom:0.8rem;">
-      Resumen detallado
-    </h2>
+    <h2 style="color:#f1f5f9;font-size:1.2rem;font-weight:700;margin-bottom:0.8rem;">Resumen detallado</h2>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.75rem;">
-      <div style="background:${incomeCardBg};border-radius:12px;padding:1rem;border:1px solid ${currentTheme.chartIncome}40;">
-        <div style="color:${currentTheme.chartIncome};font-size:0.85rem;">Ingresos</div>
-        <div style="color:${currentTheme.textPrimary};font-size:1.3rem;font-weight:700;">+$${formatNumber(totalIngresos)}</div>
+      <div style="background:#16a34a;border-radius:12px;padding:1rem;">
+        <div style="color:#dcfce7;font-size:0.85rem;">Ingresos</div>
+        <div style="color:#fff;font-size:1.3rem;font-weight:700;">+$${formatNumber(totalIngresos)}</div>
       </div>
-      <div style="background:${expenseCardBg};border-radius:12px;padding:1rem;border:1px solid ${currentTheme.chartExpense}40;">
-        <div style="color:${currentTheme.chartExpense};font-size:0.85rem;">Egresos</div>
-        <div style="color:${currentTheme.textPrimary};font-size:1.3rem;font-weight:700;">-$${formatNumber(totalEgresos)}</div>
+      <div style="background:#dc2626;border-radius:12px;padding:1rem;">
+        <div style="color:#fee2e2;font-size:0.85rem;">Egresos</div>
+        <div style="color:#fff;font-size:1.3rem;font-weight:700;">-$${formatNumber(totalEgresos)}</div>
       </div>
-      <div style="background:${savingsCardBg};border-radius:12px;padding:1rem;border:1px solid ${currentTheme.chartSavings}40;">
-        <div style="color:${currentTheme.chartSavings};font-size:0.85rem;">Me deben / Presté</div>
-        <div style="color:${currentTheme.textPrimary};font-size:1.3rem;font-weight:700;">$${formatNumber(totalMeDeben)}</div>
+      <div style="background:#2563eb;border-radius:12px;padding:1rem;">
+        <div style="color:#dbeafe;font-size:0.85rem;">Me deben / Presté</div>
+        <div style="color:#fff;font-size:1.3rem;font-weight:700;">$${formatNumber(totalMeDeben)}</div>
       </div>
-      <div style="background:${debtCardBg};border-radius:12px;padding:1rem;border:1px solid ${currentTheme.chartExpense}40;">
-        <div style="color:${currentTheme.chartExpense};font-size:0.85rem;">Debo / Me prestaron</div>
-        <div style="color:${currentTheme.textPrimary};font-size:1.3rem;font-weight:700;">$${formatNumber(totalDebo)}</div>
+      <div style="background:#c2410c;border-radius:12px;padding:1rem;">
+        <div style="color:#ffedd5;font-size:0.85rem;">Debo / Me prestaron</div>
+        <div style="color:#fbbf24;font-size:1.3rem;font-weight:700;">$${formatNumber(totalDebo)}</div>
       </div>
     </div>`;
 }
@@ -280,20 +193,6 @@ function addMovement() {
   const amount = parseColombianNumber(movAmount.value);
   const movCat = document.getElementById('movCategory');
   const movSubCat = document.getElementById('movSubCategory');
-  
-  // Validar fondos suficientes para egresos
-  if (movType.value === 'egreso') {
-    const totalAvailableFunds = db.incomeFunds.reduce((sum, f) => sum + f.remaining, 0);
-    if (totalAvailableFunds < amount) {
-      showInsufficientFundsModal(
-        `No puedes registrar un egreso de $${formatNumber(amount)}`,
-        `Tienes disponibles: $${formatNumber(totalAvailableFunds)}`,
-        `Fondos disponibles: $${formatNumber(totalAvailableFunds)}<br>Monto solicitado: $${formatNumber(amount)}<br>Diferencia: $${formatNumber(amount - totalAvailableFunds)}`
-      );
-      return;
-    }
-  }
-  
   const movement = {
     id: Date.now(),
     date: movDate.value,
@@ -330,9 +229,16 @@ function addMovement() {
       if (!primaryFund) primaryFund = fund;
     }
 
-    if (primaryFund) {
-      movement.incomeSourceId = primaryFund.id;
-      movement.fundsUsed = fundsUsed;
+    if (remainingAmount > 0) {
+      if (confirm(`No hay suficiente saldo para cubrir $${formatNumber(remainingAmount)} restante.\n¿Registrar como sobregiro?`)) {
+        movement.incomeSourceId = primaryFund ? primaryFund.id : null;
+        movement.overspend = remainingAmount;
+      } else return;
+    } else {
+      if (primaryFund) {
+        movement.incomeSourceId = primaryFund.id;
+        movement.fundsUsed = fundsUsed;
+      }
     }
 
     // También descontar de quincena/mes activo si aplica
@@ -865,18 +771,6 @@ function isFirstFortnightOfMonth() {
 function payFixedExpense(idx) {
   const fe = db.fixedExpenses[idx];
   if (!fe) return;
-  
-  // Validar fondos suficientes
-  const totalAvailableFunds = db.incomeFunds.reduce((sum, f) => sum + f.remaining, 0);
-  if (totalAvailableFunds < fe.amount) {
-    showInsufficientFundsModal(
-      `No puedes pagar este gasto fijo de $${formatNumber(fe.amount)}`,
-      `Tienes disponibles: $${formatNumber(totalAvailableFunds)}`,
-      `Gasto fijo: $${formatNumber(fe.amount)}<br>Fondos disponibles: $${formatNumber(totalAvailableFunds)}<br>Diferencia: $${formatNumber(fe.amount - totalAvailableFunds)}`
-    );
-    return;
-  }
-  
   // Use the expense's own frequency to determine its period key
   const periodKey = getCurrentPeriodKey(fe.period);
 
@@ -964,23 +858,6 @@ function deleteFixedExpense(idx) {
 // ============================================================
 //  CHART
 // ============================================================
-function generateChartPalette(count) {
-  const palette = currentTheme.chartPalette && currentTheme.chartPalette.length > 0
-    ? currentTheme.chartPalette
-    : DEFAULT_THEME.chartPalette;
-
-  // Si hay más segmentos que colores, cicla la paleta con variaciones de shade
-  const result = [];
-  for (let i = 0; i < count; i++) {
-    const baseColor = palette[i % palette.length];
-    const cycle = Math.floor(i / palette.length);
-    // Cada vuelta aplica un shade diferente para distinguirlos
-    const shadePercent = cycle === 0 ? 0 : cycle % 2 === 1 ? -(cycle * 15) : (cycle * 15);
-    result.push(shadeColor(baseColor, shadePercent));
-  }
-  return result;
-}
-
 function renderChart() {
   const monthSelect = document.getElementById('chartMonthSelect');
   const groupBySelect = document.getElementById('chartGroupBy');
@@ -1009,29 +886,21 @@ function renderChart() {
   const canvas = document.getElementById('expensesChart');
   if (!canvas) return;
   const ctx = canvas.getContext('2d');
-
-  const colors = generateChartPalette(Object.keys(data).length);
-
+  const colors = ['#ef4444','#3b82f6','#22c55e','#f59e0b','#8b5cf6','#ec4899','#14b8a6','#f97316','#6366f1','#10b981','#e11d48','#0ea5e9','#84cc16','#d97706','#7c3aed'];
   chart = new Chart(ctx, {
     type: chartType,
     data: {
       labels: Object.keys(data),
       datasets: [{
         data: Object.values(data),
-        backgroundColor: colors
+        backgroundColor: colors.slice(0, Object.keys(data).length)
       }]
     },
     options: {
       responsive: true,
       plugins: {
-        legend: {
-          display: chartType === 'pie',
-          position: 'bottom',
-          labels: { color: currentTheme.textPrimary, font: { size: 11 } }
-        },
-        tooltip: {
-          callbacks: { label: (ctx) => ` $${formatNumber(ctx.raw)}` }
-        }
+        legend: { position: 'bottom', labels: { color: '#e5e7eb', font: { size: 11 } } },
+        tooltip: { callbacks: { label: (ctx) => ` $${formatNumber(ctx.raw)}` } }
       }
     }
   });
@@ -1056,75 +925,6 @@ function populateMonthSelect() {
     option.text = date.toLocaleDateString('es-CO', { month: 'long', year: 'numeric' });
     monthSelect.appendChild(option);
   });
-}
-
-// ============================================================
-//  PALETA DE COLORES DEL GRÁFICO
-// ============================================================
-function renderChartPalette() {
-  const container = document.getElementById('chartPaletteColors');
-  if (!container) return;
-  const palette = currentTheme.chartPalette || DEFAULT_THEME.chartPalette;
-  container.innerHTML = palette.map((color, i) => `
-    <div class="palette-color-item" id="paletteItem${i}">
-      <input 
-        type="color" 
-        value="${color}" 
-        onchange="updatePaletteColor(${i}, this.value)"
-        title="Color ${i + 1}"
-      />
-      <span class="palette-color-index">${i + 1}</span>
-      <button 
-        class="palette-remove-btn" 
-        onclick="removePaletteColor(${i})"
-        ${palette.length <= 2 ? 'disabled' : ''}
-        title="Eliminar"
-      >✕</button>
-    </div>
-  `).join('');
-}
-
-function updatePaletteColor(index, value) {
-  if (!currentTheme.chartPalette) currentTheme.chartPalette = [...DEFAULT_THEME.chartPalette];
-  currentTheme.chartPalette[index] = value;
-  saveTheme();
-  renderChart();
-}
-
-function addPaletteColor() {
-  if (!currentTheme.chartPalette) currentTheme.chartPalette = [...DEFAULT_THEME.chartPalette];
-  // Añade una variación del último color como sugerencia
-  const last = currentTheme.chartPalette[currentTheme.chartPalette.length - 1];
-  const newColor = shadeColor(last, -30);
-  // shadeColor devuelve rgb(), lo convertimos a hex para el color picker
-  currentTheme.chartPalette.push(rgbOrHexToHex(newColor));
-  saveTheme();
-  renderChartPalette();
-  renderChart();
-}
-
-function removePaletteColor(index) {
-  if (!currentTheme.chartPalette || currentTheme.chartPalette.length <= 2) return;
-  currentTheme.chartPalette.splice(index, 1);
-  saveTheme();
-  renderChartPalette();
-  renderChart();
-}
-
-function resetChartPalette() {
-  currentTheme.chartPalette = [...DEFAULT_THEME.chartPalette];
-  saveTheme();
-  renderChartPalette();
-  renderChart();
-}
-
-// Helper: convierte rgb(r,g,b) o #hex a #hex para los inputs type=color
-function rgbOrHexToHex(color) {
-  if (!color) return '#000000';
-  if (color.startsWith('#')) return color;
-  const m = color.match(/rgb\((\d+),\s*(\d+),\s*(\d+)\)/);
-  if (!m) return '#000000';
-  return '#' + [m[1], m[2], m[3]].map(n => parseInt(n).toString(16).padStart(2, '0')).join('');
 }
 
 // ============================================================
@@ -1435,21 +1235,8 @@ function payDebt(index, specificAmount = null) {
   }
   if (amount <= 0 || amount > d.remaining) { alert('Monto inválido'); return; }
 
-  // Validar fondos suficientes si es pago (egreso)
-  const cat = d.debtCategory || d.type;
-  if (cat === 'mePrestaron' || cat === 'debo') {
-    const totalAvailableFunds = db.incomeFunds.reduce((sum, f) => sum + f.remaining, 0);
-    if (totalAvailableFunds < amount) {
-      showInsufficientFundsModal(
-        `No tienes fondos suficientes para pagar $${formatNumber(amount)} de esta deuda`,
-        `Tienes disponibles: $${formatNumber(totalAvailableFunds)}`,
-        `Monto a pagar: $${formatNumber(amount)}<br>Fondos disponibles: $${formatNumber(totalAvailableFunds)}<br>Diferencia: $${formatNumber(amount - totalAvailableFunds)}`
-      );
-      return;
-    }
-  }
-
   d.remaining -= amount;
+  const cat = d.debtCategory || d.type;
   const today = new Date().toISOString().slice(0, 10);
 
   // Movement type depends on category
@@ -1458,19 +1245,6 @@ function payDebt(index, specificAmount = null) {
   else if (cat === 'mePrestaron') { movType = 'egreso'; movTitle = `Pago préstamo: ${d.title}`; }
   else if (cat === 'meDeben') { movType = 'ingreso'; movTitle = `Cobro: ${d.title}`; }
   else { movType = 'egreso'; movTitle = `Pago deuda: ${d.title}`; }
-
-  // Para movimientos de egreso, descontar de fondos disponibles
-  if (movType === 'egreso') {
-    let remainingAmount = amount;
-    const availableFunds = db.incomeFunds.filter(f => f.remaining > 0).sort((a, b) => b.remaining - a.remaining);
-    
-    for (let fund of availableFunds) {
-      if (remainingAmount <= 0) break;
-      const take = Math.min(fund.remaining, remainingAmount);
-      fund.remaining -= take;
-      remainingAmount -= take;
-    }
-  }
 
   db.movements.push({ id: Date.now(), date: today, type: movType, title: movTitle, desc: `Abono a ${d.person}`, amount });
 
@@ -2432,514 +2206,52 @@ function deleteSubCategory(catId, subId) {
   renderCategoriesList();
 }
 
-// ============================================================
-//  VALIDACIÓN DE FONDOS INSUFICIENTES
-// ============================================================
-function showInsufficientFundsModal(title, message, details) {
-  const modal = document.getElementById('insufficientFundsModal');
-  const titleEl = document.getElementById('insufficientTitle');
-  const messageEl = document.getElementById('insufficientMessage');
-  const detailsEl = document.getElementById('insufficientDetails');
-  
-  titleEl.textContent = title;
-  messageEl.textContent = message;
-  detailsEl.innerHTML = details;
-  
-  modal.style.display = 'flex';
-}
-
-function closeInsufficientFundsModal() {
-  document.getElementById('insufficientFundsModal').style.display = 'none';
-}
-
-// ============================================================
-//  TEMA / PERSONALIZACIÓN
-// ============================================================
-function initTheme() {
-  applyThemeToDOM();
-  renderThemeSettings();
-}
-
-function renderThemeSettings() {
-  const presetsContainer = document.getElementById('themePresets');
-  if (!presetsContainer) return;
-  
-  let html = '';
-  Object.keys(THEME_PRESETS).forEach(key => {
-    const preset = THEME_PRESETS[key];
-    const isActive = currentTheme.bgMain === preset.bgMain;
-    html += `
-      <div class="theme-preset ${isActive ? 'active' : ''}" onclick="applyThemePreset('${key}')">
-        <div class="theme-preset-colors">
-          <div class="theme-preset-color" style="background:${preset.chartIncome};"></div>
-          <div class="theme-preset-color" style="background:${preset.chartExpense};"></div>
-          <div class="theme-preset-color" style="background:${preset.chartSavings};"></div>
-        </div>
-        <div class="theme-preset-name">${preset.name}</div>
-      </div>`;
-  });
-  presetsContainer.innerHTML = html;
-  
-  // Cargar valores actuales en los inputs
-  document.getElementById('bgMainColor').value = rgbToHex(currentTheme.bgMain);
-  document.getElementById('bgSecondaryColor').value = rgbToHex(currentTheme.bgSecondary);
-  document.getElementById('textPrimaryColor').value = rgbToHex(currentTheme.textPrimary);
-  document.getElementById('textSecondaryColor').value = rgbToHex(currentTheme.textSecondary);
-  document.getElementById('chartIncomeColor').value = rgbToHex(currentTheme.chartIncome);
-  document.getElementById('chartExpenseColor').value = rgbToHex(currentTheme.chartExpense);
-  document.getElementById('chartSavingsColor').value = rgbToHex(currentTheme.chartSavings);
-  document.getElementById('fontSizeSlider').value = currentTheme.fontSize;
-  document.getElementById('fontSizeLabel').textContent = currentTheme.fontSize + '%';
-  
-  updateColorPreviews();
-  renderChartPalette();
-}
-
-function updateColorPreviews() {
-  document.getElementById('bgMainColorPreview').style.backgroundColor = document.getElementById('bgMainColor').value;
-  document.getElementById('bgSecondaryColorPreview').style.backgroundColor = document.getElementById('bgSecondaryColor').value;
-  document.getElementById('textPrimaryColorPreview').style.backgroundColor = document.getElementById('textPrimaryColor').value;
-  document.getElementById('textSecondaryColorPreview').style.backgroundColor = document.getElementById('textSecondaryColor').value;
-  document.getElementById('chartIncomeColorPreview').style.backgroundColor = document.getElementById('chartIncomeColor').value;
-  document.getElementById('chartExpenseColorPreview').style.backgroundColor = document.getElementById('chartExpenseColor').value;
-  document.getElementById('chartSavingsColorPreview').style.backgroundColor = document.getElementById('chartSavingsColor').value;
-}
-
-function rgbToHex(rgb) {
-  if (!rgb) return '#000000';
-  const match = rgb.match(/^#/) ? rgb : `#${parseInt(rgb).toString(16).padStart(6, '0')}`;
-  return match;
-}
-
-function applyThemePreset(presetKey) {
-  if (!THEME_PRESETS[presetKey]) return;
-  const preset = THEME_PRESETS[presetKey];
-  currentTheme = {
-    bgMain: preset.bgMain,
-    bgSecondary: preset.bgSecondary,
-    textPrimary: preset.textPrimary,
-    textSecondary: preset.textSecondary,
-    chartIncome: preset.chartIncome,
-    chartExpense: preset.chartExpense,
-    chartSavings: preset.chartSavings,
-    fontSize: currentTheme.fontSize,
-    chartPalette: preset.chartPalette ? [...preset.chartPalette] : [...DEFAULT_THEME.chartPalette]
-  };
-  saveTheme();
-  renderThemeSettings();
-  applyThemeToDOM();
-  renderChart();
-  renderSummaryCards();
-}
-
-function applyCustomTheme() {
-  currentTheme = {
-    bgMain: document.getElementById('bgMainColor').value,
-    bgSecondary: document.getElementById('bgSecondaryColor').value,
-    textPrimary: document.getElementById('textPrimaryColor').value,
-    textSecondary: document.getElementById('textSecondaryColor').value,
-    chartIncome: document.getElementById('chartIncomeColor').value,
-    chartExpense: document.getElementById('chartExpenseColor').value,
-    chartSavings: document.getElementById('chartSavingsColor').value,
-    fontSize: parseInt(document.getElementById('fontSizeSlider').value),
-    chartPalette: currentTheme.chartPalette || [...DEFAULT_THEME.chartPalette] // ← conserva la paleta
-  };
-  document.getElementById('fontSizeLabel').textContent = currentTheme.fontSize + '%';
-  updateColorPreviews();
-  saveTheme();
-  applyThemeToDOM();
-  renderChart();
-  renderSummaryCards();
-}
-
-function applyThemeToDOM() {
-  const root = document.documentElement;
-  const style = document.getElementById('theme-style') || createThemeStyle();
-  
-  const scale = currentTheme.fontSize / 100;
-  const bgTertiary = shadeColor(currentTheme.bgSecondary, 20);
-  const bgQuaternary = shadeColor(currentTheme.bgSecondary, 30);
-  const bgQuinary = shadeColor(currentTheme.bgSecondary, 40);
-  
-  const cssVars = `
-    :root {
-      --bg-main: ${currentTheme.bgMain};
-      --bg-secondary: ${currentTheme.bgSecondary};
-      --text-primary: ${currentTheme.textPrimary};
-      --text-secondary: ${currentTheme.textSecondary};
-      --chart-income: ${currentTheme.chartIncome};
-      --chart-expense: ${currentTheme.chartExpense};
-      --chart-savings: ${currentTheme.chartSavings};
-      --font-scale: ${scale};
-    }
-    
-    * {
-      color: inherit;
-    }
-    
-    body {
-      background: ${currentTheme.bgMain} !important;
-      color: ${currentTheme.textPrimary} !important;
-      font-size: calc(16px * ${scale}) !important;
-    }
-    
-    header {
-      background: ${currentTheme.bgSecondary} !important;
-      color: ${currentTheme.textPrimary} !important;
-      border-color: ${bgQuaternary} !important;
-    }
-    
-    nav {
-      background: ${currentTheme.bgSecondary} !important;
-      border-color: ${bgQuaternary} !important;
-    }
-    
-    nav button {
-      color: ${currentTheme.textSecondary} !important;
-    }
-    
-    nav button:hover {
-      background: ${bgQuaternary} !important;
-    }
-    
-    nav button.active {
-      background: ${bgQuaternary} !important;
-      color: ${currentTheme.textPrimary} !important;
-    }
-    
-    /* Cards y contenedores */
-    .card, .modal-content, .settings-group, .theme-preset, [class*="card"], [class*="container"] {
-      background: ${bgQuaternary} !important;
-      color: ${currentTheme.textPrimary} !important;
-      border-color: ${bgQuinary} !important;
-    }
-    
-    /* Inputs, selects, textareas */
-    input, textarea, select {
-      background: ${bgTertiary} !important;
-      color: ${currentTheme.textPrimary} !important;
-      border-color: ${bgQuaternary} !important;
-    }
-    
-    input::placeholder, textarea::placeholder {
-      color: ${currentTheme.textSecondary} !important;
-      opacity: 0.7;
-    }
-    
-    input:focus, textarea:focus, select:focus {
-      border-color: ${currentTheme.chartIncome} !important;
-      background: ${shadeColor(currentTheme.bgSecondary, 15)} !important;
-    }
-    
-    /* Color pickers y previews */
-    input[type="color"] {
-      border-color: ${bgQuaternary} !important;
-    }
-    
-    .color-picker-preview, [class*="preview"] {
-      border-color: ${bgQuaternary} !important;
-    }
-    
-    /* Botones generales */
-    button {
-      color: ${currentTheme.textSecondary} !important;
-      border-color: ${bgQuaternary} !important;
-      background: ${bgQuaternary} !important;
-    }
-    
-    button:hover {
-      background: ${bgQuinary} !important;
-    }
-    
-    button:active {
-      background: ${shadeColor(currentTheme.bgSecondary, 50)} !important;
-    }
-    
-    /* Botones primarios */
-    .primary, button.primary {
-      background: ${currentTheme.chartIncome} !important;
-      color: #000 !important;
-    }
-    
-    .primary:hover, button.primary:hover {
-      background: ${shadeColor(currentTheme.chartIncome, -20)} !important;
-    }
-    
-    /* Botones secundarios */
-    .secondary, button.secondary {
-      background: ${currentTheme.chartSavings} !important;
-      color: white !important;
-    }
-    
-    .secondary:hover, button.secondary:hover {
-      background: ${shadeColor(currentTheme.chartSavings, -20)} !important;
-    }
-    
-    /* Botones peligrosos */
-    .danger, button.danger {
-      background: ${currentTheme.chartExpense} !important;
-      color: white !important;
-    }
-    
-    .danger:hover, button.danger:hover {
-      background: ${shadeColor(currentTheme.chartExpense, -20)} !important;
-    }
-    
-    /* Navegación */
-    #sideDrawer {
-      background: ${currentTheme.bgSecondary} !important;
-      border-color: ${bgQuaternary} !important;
-    }
-    
-    .drawer-item {
-      color: ${currentTheme.textSecondary} !important;
-      border-color: ${bgQuaternary} !important;
-    }
-    
-    .drawer-item:hover, .drawer-item.active {
-      background: ${bgQuaternary} !important;
-      color: ${currentTheme.textPrimary} !important;
-    }
-    
-    #drawerOverlay {
-      background: rgba(0, 0, 0, 0.5) !important;
-    }
-    
-    /* Sección de personalización específicamente */
-    .settings-section {
-      background: ${bgQuaternary} !important;
-      color: ${currentTheme.textPrimary} !important;
-      border-color: ${bgQuinary} !important;
-    }
-    
-    .settings-group {
-      background: ${bgTertiary} !important;
-      border-color: ${bgQuaternary} !important;
-    }
-    
-    .settings-group label {
-      color: ${currentTheme.textPrimary} !important;
-    }
-    
-    .settings-group h4 {
-      color: ${currentTheme.textPrimary} !important;
-    }
-    
-    .theme-preset {
-      border-color: ${bgQuinary} !important;
-      background: ${bgTertiary} !important;
-      cursor: pointer;
-      transition: all 0.2s;
-    }
-    
-    .theme-preset:hover {
-      border-color: ${currentTheme.chartIncome} !important;
-      background: ${bgQuaternary} !important;
-    }
-    
-    .theme-preset.active {
-      border-color: ${currentTheme.chartIncome} !important;
-      background: ${bgQuaternary} !important;
-      box-shadow: 0 0 0 2px ${currentTheme.chartIncome} !important;
-    }
-    
-    .theme-preset-name {
-      color: ${currentTheme.textPrimary} !important;
-    }
-    
-    /* Range sliders */
-    input[type="range"] {
-      accent-color: ${currentTheme.chartIncome} !important;
-    }
-    
-    /* Modals */
-    .modal {
-      background: rgba(0, 0, 0, 0.8) !important;
-    }
-    
-    .modal-content {
-      background: ${currentTheme.bgSecondary} !important;
-      color: ${currentTheme.textPrimary} !important;
-      border-color: ${bgQuaternary} !important;
-    }
-    
-    .modal-content h3 {
-      color: ${currentTheme.textPrimary} !important;
-    }
-    
-    .modal-content p {
-      color: ${currentTheme.textSecondary} !important;
-    }
-    
-    /* Headings */
-    h1, h2, h3, h4, h5, h6 {
-      color: ${currentTheme.textPrimary} !important;
-    }
-    
-    /* Links */
-    a {
-      color: ${currentTheme.chartIncome} !important;
-    }
-    
-    a:hover {
-      color: ${shadeColor(currentTheme.chartIncome, -20)} !important;
-    }
-    
-    /* Separadores y bordes */
-    hr {
-      border-color: ${bgQuaternary} !important;
-    }
-    
-    /* Badges y tags */
-    .badge, [class*="badge"] {
-      background: ${bgQuaternary} !important;
-      color: ${currentTheme.textPrimary} !important;
-    }
-    
-    /* Tablas y listas */
-    table, tbody, tr, td {
-      border-color: ${bgQuaternary} !important;
-    }
-    
-    /* Específicos de la app */
-    .income {
-      color: ${currentTheme.chartIncome} !important;
-    }
-    
-    .expense {
-      color: ${currentTheme.chartExpense} !important;
-    }
-    
-    .savings {
-      color: ${currentTheme.chartSavings} !important;
-    }
-    
-    [class*="summary"] {
-      background: ${bgQuaternary} !important;
-      border-color: ${bgQuinary} !important;
-    }
-    
-    [class*="calendar"] {
-      background: ${bgTertiary} !important;
-    }
-    
-    [class*="calendar"] button {
-      color: ${currentTheme.textSecondary} !important;
-      border-color: ${bgQuaternary} !important;
-    }
-    
-    [class*="calendar"] button:hover {
-      background: ${bgQuaternary} !important;
-      color: ${currentTheme.textPrimary} !important;
-    }
-    
-    [class*="calendar"] button.active {
-      background: ${bgQuaternary} !important;
-      color: ${currentTheme.textPrimary} !important;
-    }
-  `;
-  
-  style.textContent = cssVars;
-}
-
-function createThemeStyle() {
-  const style = document.createElement('style');
-  style.id = 'theme-style';
-  document.head.appendChild(style);
-  return style;
-}
-
-function shadeColor(color, percent) {
-  const R = parseInt(color.substring(1, 3), 16);
-  const G = parseInt(color.substring(3, 5), 16);
-  const B = parseInt(color.substring(5, 7), 16);
-  
-  const r = Math.round((R * (100 + percent)) / 100);
-  const g = Math.round((G * (100 + percent)) / 100);
-  const b = Math.round((B * (100 + percent)) / 100);
-  
-  return `rgb(${Math.min(r, 255)},${Math.min(g, 255)},${Math.min(b, 255)})`;
-}
-
-function saveTheme() {
-  localStorage.setItem('financeTheme', JSON.stringify(currentTheme));
-}
-
-function resetToDefaultTheme() {
-  if (!confirm('¿Restaurar tema por defecto?')) return;
-  currentTheme = { ...DEFAULT_THEME, chartPalette: [...DEFAULT_THEME.chartPalette] };
-  saveTheme();
-  renderThemeSettings();
-  renderChartPalette();
-  applyThemeToDOM();
-  renderChart();
-  renderSummaryCards();
-}
-
-function exportTheme() {
-  const data = JSON.stringify({
-    name: 'Mi tema personalizado',
-    theme: currentTheme,
-    date: new Date().toISOString()
-  }, null, 2);
-  const blob = new Blob([data], { type: 'application/json' });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = `tema-finanzas-${Date.now()}.json`;
-  a.click();
-  URL.revokeObjectURL(url);
-}
-
-function importThemeFile() {
-  document.getElementById('themeFileInput').click();
-}
-
-function handleThemeFileSelect(input) {
-  const file = input.files?.[0];
-  if (!file) return;
-  const reader = new FileReader();
-  reader.onload = (e) => {
-    try {
-      const data = JSON.parse(e.target.result);
-      if (data.theme) {
-        currentTheme = { ...DEFAULT_THEME, ...data.theme };
-        if (!currentTheme.chartPalette) currentTheme.chartPalette = [...DEFAULT_THEME.chartPalette];
-        saveTheme();
-        renderThemeSettings();
-        renderChartPalette();
-        applyThemeToDOM();
-        renderChart();
-        renderSummaryCards();
-        alert('✅ Tema importado correctamente');
-      }
-    } catch (err) {
-      alert('❌ Error al importar el tema');
-    }
-  };
-  reader.readAsText(file);
-  input.value = '';
-}
-
-// ============================================================
-//  INICIALIZACIÓN
-// ============================================================
-document.addEventListener('DOMContentLoaded', () => {
-  initTheme();
-  updateIncomeFunds();
-  updateBalance();
-  renderCalendarSection();
-  renderDebts();
-  renderChart();
-  populateMonthSelect();
-  populateCategorySelects();
-  renderSummaryCards();
-  initAutoFormat();
-  // Service Worker
-  if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.register('sw.js').catch(e => console.log('SW error:', e));
+function renderCategoriesList() {
+  const el = document.getElementById('categoriesList');
+  if (!el) return;
+  if (!db.categories || db.categories.length === 0) {
+    el.innerHTML = '<p style="color:#64748b;font-size:0.85rem;">Sin categorías aún.</p>';
+    return;
   }
-});
+  el.innerHTML = db.categories.map(cat => {
+    const subHTML = cat.subcategories && cat.subcategories.length > 0
+      ? `<div style="padding-left:1rem;margin-top:0.4rem;">${cat.subcategories.map(s =>
+          `<div style="display:flex;justify-content:space-between;align-items:center;padding:0.25rem 0.5rem;background:#0a1628;border-radius:6px;margin:0.2rem 0;font-size:0.8rem;color:#94a3b8;">
+            <span>${s.name}</span>
+            <button class="danger" onclick="deleteSubCategory(${cat.id},${s.id})" style="padding:0.15rem 0.4rem;font-size:0.7rem;">✕</button>
+          </div>`).join('')}</div>` : '';
+    return `
+      <div style="background:#1e293b;border-radius:10px;padding:0.7rem 0.8rem;margin-bottom:0.5rem;">
+        <div style="display:flex;justify-content:space-between;align-items:center;">
+          <span style="font-weight:700;color:#e2e8f0;">🏷️ ${cat.name}</span>
+          <div style="display:flex;gap:0.3rem;">
+            <button class="secondary" onclick="openSubCatSection(${cat.id})" style="font-size:0.75rem;padding:0.25rem 0.5rem;">+ Sub</button>
+            <button class="danger" onclick="deleteCategory(${cat.id})" style="padding:0.25rem 0.5rem;font-size:0.75rem;">✕</button>
+          </div>
+        </div>
+        ${subHTML}
+      </div>`;
+  }).join('');
+}
+
+// ============================================================
+//  SIDE DRAWER
+// ============================================================
+function toggleDrawer() {
+  const drawer = document.getElementById('sideDrawer');
+  const overlay = document.getElementById('drawerOverlay');
+  const burger = document.querySelector('.nav-burger');
+  const isOpen = drawer.classList.contains('open');
+  if (isOpen) {
+    drawer.classList.remove('open');
+    overlay.classList.remove('open');
+    burger.classList.remove('open');
+  } else {
+    drawer.classList.add('open');
+    overlay.classList.add('open');
+    burger.classList.add('open');
+  }
+}
 
 function closeDrawer() {
   document.getElementById('sideDrawer').classList.remove('open');
@@ -2960,20 +2272,6 @@ function drawerNav(viewId) {
   document.getElementById(viewId).classList.add('active');
   if (viewId === 'predictions') renderPredictionsList();
   if (viewId === 'tips') renderTips();
-  if (viewId === 'filter') { populateCategorySelects(); }
-  setTimeout(initAutoFormat, 10);
-}
-
-function navAction(viewId) {
-  // Función unificada para PC y móvil
-  closeDrawer();
-  document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
-  document.getElementById(viewId).classList.add('active');
-  document.querySelectorAll('.nav-main').forEach(b => b.classList.remove('active'));
-  document.querySelectorAll('.drawer-item').forEach(b => b.classList.remove('active'));
-  if (viewId === 'predictions') renderPredictionsList();
-  if (viewId === 'tips') renderTips();
-  if (viewId === 'settings') renderThemeSettings();
   if (viewId === 'filter') { populateCategorySelects(); }
   setTimeout(initAutoFormat, 10);
 }
